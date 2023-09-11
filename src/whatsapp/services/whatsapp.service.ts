@@ -38,6 +38,7 @@ import { exec, execSync } from 'child_process';
 import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
+import KeepAliveProxyAgent from 'keepalive-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -128,7 +129,6 @@ import { Events, MessageSubtype, TypeMediaMessage, wa } from '../types/wa.types'
 import { waMonitor } from '../whatsapp.module';
 import { ChatwootService } from './chatwoot.service';
 import { TypebotService } from './typebot.service';
-
 export class WAStartupService {
   constructor(
     private readonly configService: ConfigService,
@@ -1078,8 +1078,16 @@ export class WAStartupService {
 
       if (this.localProxy.enabled) {
         this.logger.verbose('Proxy enabled');
+        const httpsAgent = new KeepAliveProxyAgent({
+          proxy: {
+            host: 'na.lunaproxy.com',
+            port: 12233,
+            auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-1:ana!2009`,
+          },
+        });
+
         options = {
-          agent: new ProxyAgent(this.localProxy.proxy as any),
+          agent: httpsAgent,
           fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
         };
       }

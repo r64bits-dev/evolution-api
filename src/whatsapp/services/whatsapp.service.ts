@@ -1074,23 +1074,23 @@ export class WAStartupService {
       const browser: WABrowserDescription = [session.CLIENT, session.NAME, release()];
       this.logger.verbose('Browser: ' + JSON.stringify(browser));
 
-      let options;
+      //let options;
 
-      if (this.localProxy.enabled) {
-        this.logger.verbose('Proxy enabled');
-        const httpsAgent = new KeepAliveProxyAgent({
-          proxy: {
-            host: 'na.lunaproxy.com',
-            port: 12233,
-            auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-1:ana!2009`,
-          },
-        });
+      //if (this.localProxy.enabled) {
+      this.logger.verbose('Proxy enabled');
+      const httpsAgent = new KeepAliveProxyAgent({
+        proxy: {
+          host: 'na.lunaproxy.com',
+          port: 12233,
+          auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-1:ana!2009`,
+        },
+      });
 
-        options = {
-          agent: httpsAgent,
-          fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
-        };
-      }
+      const options = {
+        agent: httpsAgent,
+        fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
+      };
+      //}
 
       const socketConfig: UserFacingSocketConfig = {
         ...options,

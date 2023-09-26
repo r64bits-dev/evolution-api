@@ -67,6 +67,8 @@ export class InstanceController {
     typebot_keyword_finish,
     typebot_delay_message,
     typebot_unknown_message,
+    proxy_enabled,
+    proxy_proxy,
     typebot_listening_from_me,
   }: InstanceDto) {
     try {
@@ -78,6 +80,14 @@ export class InstanceController {
       this.logger.verbose('creating instance');
       const instance = new WAStartupService(this.configService, this.eventEmitter, this.repository, this.cache);
       instance.instanceName = instanceName;
+
+      if (proxy_enabled) {
+        this.logger.verbose('requested createInstance with proxy ' + proxy_proxy);
+        instance.setProxy({
+          enabled: proxy_enabled,
+          proxy: proxy_proxy,
+        });
+      }
 
       this.logger.verbose('instance: ' + instance.instanceName + ' created');
 

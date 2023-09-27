@@ -1091,9 +1091,10 @@ export class WAStartupService {
         fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
       };
       //}
+      console.log(options);
 
       const socketConfig: UserFacingSocketConfig = {
-        ...options,
+        //...options,
         auth: {
           creds: this.instance.authState.state.creds,
           keys: makeCacheableSignalKeyStore(this.instance.authState.state.keys, P({ level: 'error' })),

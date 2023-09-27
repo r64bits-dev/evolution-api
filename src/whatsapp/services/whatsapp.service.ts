@@ -1082,7 +1082,7 @@ export class WAStartupService {
         proxy: {
           host: 'na.lunaproxy.com',
           port: 12233,
-          auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-1:ana!2009`,
+          auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-60:ana!2009`,
         },
       });
 

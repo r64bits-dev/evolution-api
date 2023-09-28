@@ -73,7 +73,7 @@ export class WAMonitoringService {
     }
   }
 
-  public async instanceInfo(instanceName?: string) {
+  public async instanceInfo(instanceName?: string, checkDetailedInfo = true) {
     this.logger.verbose('get instance info');
 
     const urlServer = this.configService.get<HttpServer>('SERVER').URL;
@@ -94,9 +94,9 @@ export class WAMonitoringService {
           instance: {
             instanceName: key,
             owner: value.wuid,
-            profileName: (await value.getProfileName()) || 'not loaded',
+            profileName: checkDetailedInfo ? (await value.getProfileName()) || 'not loaded' : 'not loaded',
             profilePictureUrl: value.profilePictureUrl,
-            profileStatus: (await value.getProfileStatus()) || '',
+            profileStatus: checkDetailedInfo ? (await value.getProfileStatus()) || '' : '',
             status: status,
           },
         };

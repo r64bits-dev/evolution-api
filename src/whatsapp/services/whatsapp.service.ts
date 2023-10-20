@@ -75,6 +75,7 @@ import { useMultiFileAuthStateDb } from '../../utils/use-multi-file-auth-state-d
 import { useMultiFileAuthStateRedisDb } from '../../utils/use-multi-file-auth-state-redis-db';
 import {
   ArchiveChatDto,
+  BlockDto,
   DeleteMessage,
   getBase64FromMediaMessageDto,
   LastMessage,
@@ -2704,6 +2705,14 @@ export class WAStartupService {
     }
 
     return onWhatsapp;
+  }
+  public async blockUnblock(data: BlockDto) {
+    this.logger.verbose('Getting whatsapp number');
+    const jid = this.createJid(data.number);
+
+    await this.client.updateBlockStatus(jid, data.block ? 'block' : 'unblock');
+
+    return true;
   }
 
   public async markMessageAsRead(data: ReadMessageDto) {

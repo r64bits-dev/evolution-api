@@ -17,6 +17,11 @@ export class NumberDto {
   number: string;
 }
 
+export class BlockDto {
+  number: string;
+  block: boolean;
+}
+
 export class NumberBusiness {
   wid?: string;
   jid?: string;

@@ -38,8 +38,8 @@ import { exec, execSync } from 'child_process';
 import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
-import KeepAliveProxyAgent from 'keepalive-proxy-agent';
-//import { HttpsProxyAgent } from 'https-proxy-agent';
+//import KeepAliveProxyAgent from 'keepalive-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -72,7 +72,6 @@ import { getAMQP, removeQueues } from '../../libs/amqp.server';
 import { dbserver } from '../../libs/db.connect';
 import { RedisCache } from '../../libs/redis.client';
 import { getIO } from '../../libs/socket.server';
-import { ServerUP } from '../../utils/server-up';
 import { useMultiFileAuthStateDb } from '../../utils/use-multi-file-auth-state-db';
 import { useMultiFileAuthStateRedisDb } from '../../utils/use-multi-file-auth-state-redis-db';
 import {
@@ -1188,31 +1187,32 @@ export class WAStartupService {
       //if (this.localProxy.enabled) {
 
       // eslint-disable-next-line no-async-promise-executor
-      console.log(`Proxies qtde ${ServerUP.proxies.length}`);
 
-      if (ServerUP.proxies.length == 0) {
-        await ServerUP.loadProxies();
-      }
+      // ServerUP.proxies.splice(0, 1);
 
-      const ipProxy = ServerUP.proxies[0]['ip'];
-      const portProxy = ServerUP.proxies[0]['port'];
-
-      ServerUP.proxies.splice(0, 1);
-
-      const httpsAgent = new KeepAliveProxyAgent({
-        proxy: {
-          host: ipProxy,
-          port: portProxy,
-        },
-      });
-
-      this.logger.verbose('Proxy enabled');
-      //const httpsAgent = new HttpsProxyAgent(`http://user-lu9956846:ana!2009@na.lunaproxy.com:12233`);
       // const httpsAgent = new KeepAliveProxyAgent({
       //   proxy: {
-      //     host: 'na.lunaproxy.com',
-      //     port: 12233,
-      //     auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-30:ana!2009`,
+      //     host: ipProxy,
+      //     port: portProxy,
+      //   },
+      // });
+
+      const wget = await axios.get('https://app.geonode.com/api/proxy/ports/sticky/residential-premium');
+      let proxies = [];
+      if (wget.status == 200) {
+        proxies = wget.data.split('<br>');
+      }
+      const randomIndex = Math.floor(Math.random() * (900 - 1 + 1) + 1);
+
+      this.logger.verbose('Proxy enabled');
+      const httpsAgent = new HttpsProxyAgent(
+        `http://geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371@${proxies[randomIndex]}`,
+      );
+      // const httpsAgent = new KeepAliveProxyAgent({
+      //   proxy: {
+      //     host: 'premium-residential.geonode.com',
+      //     port: 9000,
+      //     auth: `geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371`,
       //   },
       // });
 

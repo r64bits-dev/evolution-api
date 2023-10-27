@@ -12,6 +12,8 @@ export class ServerUP {
     this.#app = e;
   }
 
+  static proxies = [];
+
   static get https() {
     const { FULLCHAIN, PRIVKEY } = configService.get<SslConf>('SSL_CONF');
     return https.createServer(

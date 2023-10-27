@@ -39,6 +39,7 @@ import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
 import KeepAliveProxyAgent from 'keepalive-proxy-agent';
+//import { HttpsProxyAgent } from 'https-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -71,6 +72,7 @@ import { getAMQP, removeQueues } from '../../libs/amqp.server';
 import { dbserver } from '../../libs/db.connect';
 import { RedisCache } from '../../libs/redis.client';
 import { getIO } from '../../libs/socket.server';
+import { ServerUP } from '../../utils/server-up';
 import { useMultiFileAuthStateDb } from '../../utils/use-multi-file-auth-state-db';
 import { useMultiFileAuthStateRedisDb } from '../../utils/use-multi-file-auth-state-redis-db';
 import {
@@ -132,6 +134,7 @@ import { ChamaaiService } from './chamaai.service';
 import { ChatwootService } from './chatwoot.service';
 //import { SocksProxyAgent } from './socks-proxy-agent';
 import { TypebotService } from './typebot.service';
+
 export class WAStartupService {
   constructor(
     private readonly configService: ConfigService,
@@ -1184,41 +1187,52 @@ export class WAStartupService {
 
       //if (this.localProxy.enabled) {
 
-      let ipProxy = 0;
-      let portProxy = 0;
       // eslint-disable-next-line no-async-promise-executor
-      await new Promise<void>(async (resolve) => {
-        while (ipProxy == 0) {
+      console.log(`Proxies qtde ${ServerUP.proxies.length}`);
+      if (ServerUP.proxies.length == 0) {
+        // eslint-disable-next-line no-async-promise-executor
+        await new Promise<void>(async (resolve) => {
           const wget = await axios.get(
-            'https://tq.lunaproxy.com/getflowip?neek=1036540&num=1&type=2&sep=1&regions=br&ip_si=1&level=1&sb=',
+            'https://tq.lunaproxy.com/getflowip?neek=1036540&num=100&type=2&sep=1&regions=br&ip_si=1&level=1&sb=',
           );
 
-          if (wget.status == 200) {
-            try {
-              ipProxy = wget.data.data[0]['ip'];
-              portProxy = wget.data.data[0]['port'];
-              resolve();
-            } catch (_) {
-              const timeWait = Math.floor(Math.random() * (3000 - 1000 + 1) + 1000);
-              setTimeout(function () {
-                console.log('aguarda 1000');
-              }, timeWait);
-            }
+          try {
+            ServerUP.proxies = wget.data.data;
+            resolve();
+          } catch (_) {
+            const timeWait = Math.floor(Math.random() * (3000 - 2000 + 1) + 2000);
+            setTimeout(function () {
+              console.log('aguarda ' + timeWait);
+            }, timeWait);
           }
-        }
-      });
+        });
+      }
 
-      this.logger.verbose('Proxy enabled');
+      const ipProxy = ServerUP.proxies[0]['ip'];
+      const portProxy = ServerUP.proxies[0]['port'];
+
+      ServerUP.proxies.splice(0, 1);
+
       const httpsAgent = new KeepAliveProxyAgent({
         proxy: {
           host: ipProxy,
           port: portProxy,
         },
       });
+
+      this.logger.verbose('Proxy enabled');
+      //const httpsAgent = new HttpsProxyAgent(`http://user-lu9956846:ana!2009@na.lunaproxy.com:12233`);
+      // const httpsAgent = new KeepAliveProxyAgent({
+      //   proxy: {
+      //     host: 'na.lunaproxy.com',
+      //     port: 12233,
+      //     auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-30:ana!2009`,
+      //   },
+      // });
+
       //console.log(httpsAgent);
       const options = {
         agent: httpsAgent,
-        fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
       };
       //}
 

@@ -1183,17 +1183,30 @@ export class WAStartupService {
       //let options;
 
       //if (this.localProxy.enabled) {
-      const wget = await axios.get(
-        'https://tq.lunaproxy.com/getflowip?neek=1036540&num=1&type=2&sep=1&regions=br&ip_si=1&level=1&sb=',
-      );
 
       let ipProxy = 0;
       let portProxy = 0;
+      // eslint-disable-next-line no-async-promise-executor
+      await new Promise<void>(async (resolve) => {
+        while (ipProxy == 0) {
+          const wget = await axios.get(
+            'https://tq.lunaproxy.com/getflowip?neek=1036540&num=1&type=2&sep=1&regions=br&ip_si=1&level=1&sb=',
+          );
 
-      if (wget.status == 200) {
-        ipProxy = wget.data.data[0]['ip'];
-        portProxy = wget.data.data[0]['port'];
-      }
+          if (wget.status == 200) {
+            try {
+              ipProxy = wget.data.data[0]['ip'];
+              portProxy = wget.data.data[0]['port'];
+              resolve();
+            } catch (_) {
+              const timeWait = Math.floor(Math.random() * (3000 - 1000 + 1) + 1000);
+              setTimeout(function () {
+                console.log('aguarda 1000');
+              }, timeWait);
+            }
+          }
+        }
+      });
 
       this.logger.verbose('Proxy enabled');
       const httpsAgent = new KeepAliveProxyAgent({

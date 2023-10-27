@@ -76,7 +76,7 @@ export class WAMonitoringService {
     }
   }
 
-  public async instanceInfo(instanceName?: string) {
+  public async instanceInfo(instanceName?: string, checkDetailedInfo = true) {
     this.logger.verbose('get instance info');
     if (instanceName && !this.waInstances[instanceName]) {
       throw new NotFoundException(`Instance "${instanceName}" not found`);
@@ -103,23 +103,28 @@ export class WAMonitoringService {
         if (value.connectionStatus.state === 'open') {
           this.logger.verbose('instance: ' + key + ' - connectionStatus: open');
 
-          const instanceData = {
-            instance: {
-              instanceName: key,
-              owner: value.wuid,
-              profileName: (await value.getProfileName()) || 'not loaded',
-              profilePictureUrl: value.profilePictureUrl,
-              profileStatus: (await value.getProfileStatus()) || '',
-              status: value.connectionStatus.state,
-            },
-          };
+        const instanceData: any = {
+          instance: {
+            instanceName: key,
+            owner: value.wuid,
+            profileName: checkDetailedInfo ? (await value.getProfileName()) || 'not loaded' : 'not loaded',
+            profilePictureUrl: value.profilePictureUrl,
+            profileStatus: checkDetailedInfo ? (await value.getProfileStatus()) || '' : '',
+            status: status,
+          },
+        };
 
-          if (this.configService.get<Auth>('AUTHENTICATION').EXPOSE_IN_FETCH_INSTANCES) {
-            instanceData.instance['serverUrl'] = this.configService.get<HttpServer>('SERVER').URL;
+        if (this.configService.get<Auth>('AUTHENTICATION').EXPOSE_IN_FETCH_INSTANCES) {
+          instanceData.instance.serverUrl = urlServer;
+          instanceData.instance.apikey = (await this.repository.auth.find(key))?.apikey;
 
-            instanceData.instance['apikey'] = (await this.repository.auth.find(key)).apikey;
+          const findChatwoot = await this.waInstances[key].findChatwoot();
+          if (findChatwoot && findChatwoot.enabled) {
+            instanceData.instance.chatwoot = {
+              ...findChatwoot,
+              webhook_url: `${urlServer}/chatwoot/webhook/${encodeURIComponent(key)}`,
+            };
 
-            instanceData.instance['chatwoot'] = chatwoot;
           }
 
           instances.push(instanceData);

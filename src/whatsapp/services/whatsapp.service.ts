@@ -38,6 +38,7 @@ import { exec, execSync } from 'child_process';
 import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
+import KeepAliveProxyAgent from 'keepalive-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -74,6 +75,7 @@ import { useMultiFileAuthStateDb } from '../../utils/use-multi-file-auth-state-d
 import { useMultiFileAuthStateRedisDb } from '../../utils/use-multi-file-auth-state-redis-db';
 import {
   ArchiveChatDto,
+  BlockDto,
   DeleteMessage,
   getBase64FromMediaMessageDto,
   LastMessage,
@@ -130,7 +132,6 @@ import { ChamaaiService } from './chamaai.service';
 import { ChatwootService } from './chatwoot.service';
 //import { SocksProxyAgent } from './socks-proxy-agent';
 import { TypebotService } from './typebot.service';
-
 export class WAStartupService {
   constructor(
     private readonly configService: ConfigService,
@@ -1179,15 +1180,23 @@ export class WAStartupService {
       const browser: WABrowserDescription = [session.CLIENT, session.NAME, release()];
       this.logger.verbose('Browser: ' + JSON.stringify(browser));
 
-      let options;
+      //let options;
 
-      if (this.localProxy.enabled) {
-        this.logger.verbose('Proxy enabled');
-        options = {
-          agent: new ProxyAgent(this.localProxy.proxy as any),
-          fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
-        };
-      }
+      //if (this.localProxy.enabled) {
+      this.logger.verbose('Proxy enabled');
+      const httpsAgent = new KeepAliveProxyAgent({
+        proxy: {
+          host: 'na.lunaproxy.com',
+          port: 12233,
+          auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-60:ana!2009`,
+        },
+      });
+
+      const options = {
+        agent: httpsAgent,
+        fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
+      };
+      //}
 
       const socketConfig: UserFacingSocketConfig = {
         ...options,
@@ -2813,6 +2822,14 @@ export class WAStartupService {
     }
 
     return onWhatsapp;
+  }
+  public async blockUnblock(data: BlockDto) {
+    this.logger.verbose('Getting whatsapp number');
+    const jid = this.createJid(data.number);
+
+    await this.client.updateBlockStatus(jid, data.block ? 'block' : 'unblock');
+
+    return true;
   }
 
   public async markMessageAsRead(data: ReadMessageDto) {

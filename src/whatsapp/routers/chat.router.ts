@@ -13,11 +13,13 @@ import {
   profileSchema,
   profileStatusSchema,
   readMessageSchema,
+  whatsappBlockUnblockSSchema,
   whatsappNumberSchema,
 } from '../../validate/validate.schema';
 import { RouterBroker } from '../abstract/abstract.router';
 import {
   ArchiveChatDto,
+  BlockDto,
   DeleteMessage,
   getBase64FromMediaMessageDto,
   NumberDto,
@@ -54,6 +56,23 @@ export class ChatRouter extends RouterBroker {
           schema: whatsappNumberSchema,
           ClassRef: WhatsAppNumberDto,
           execute: (instance, data) => chatController.whatsappNumber(instance, data),
+        });
+
+        return res.status(HttpStatus.CREATED).json(response);
+      })
+      .post(this.routerPath('whatsappBlock'), ...guards, async (req, res) => {
+        logger.verbose('request received in whatsappBlock');
+        logger.verbose('request body: ');
+        logger.verbose(req.body);
+
+        logger.verbose('request query: ');
+        logger.verbose(req.query);
+
+        const response = await this.dataValidate<BlockDto>({
+          request: req,
+          schema: whatsappBlockUnblockSSchema,
+          ClassRef: BlockDto,
+          execute: (instance, data) => chatController.whatsappBlockUnblock(instance, data),
         });
 
         return res.status(HttpStatus.CREATED).json(response);

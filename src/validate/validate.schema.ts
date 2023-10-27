@@ -455,6 +455,18 @@ export const whatsappNumberSchema: JSONSchema7 = {
   },
 };
 
+export const whatsappBlockUnblockSSchema: JSONSchema7 = {
+  $id: v4(),
+  type: 'object',
+  properties: {
+    number: {
+      type: 'string',
+    },
+    block: { type: 'boolean', enum: [true, false] },
+  },
+  required: ['number', 'block'],
+};
+
 export const readMessageSchema: JSONSchema7 = {
   $id: v4(),
   type: 'object',

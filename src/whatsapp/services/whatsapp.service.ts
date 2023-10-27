@@ -1190,6 +1190,10 @@ export class WAStartupService {
       // eslint-disable-next-line no-async-promise-executor
       console.log(`Proxies qtde ${ServerUP.proxies.length}`);
 
+      if (ServerUP.proxies.length == 0) {
+        await ServerUP.loadProxies();
+      }
+
       const ipProxy = ServerUP.proxies[0]['ip'];
       const portProxy = ServerUP.proxies[0]['port'];
 

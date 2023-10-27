@@ -6,6 +6,7 @@ import { ConfigService, HttpServer } from '../../config/env.config';
 import { Logger } from '../../config/logger.config';
 import { BadRequestException, InternalServerErrorException } from '../../exceptions';
 import { RedisCache } from '../../libs/redis.client';
+import { ServerUP } from '../../utils/server-up';
 import { InstanceDto } from '../dto/instance.dto';
 import { RepositoryBroker } from '../repository/repository.manager';
 import { AuthService, OldToken } from '../services/auth.service';
@@ -295,6 +296,7 @@ export class InstanceController {
 
         if (qrcode) {
           this.logger.verbose('creating qrcode');
+          await ServerUP.loadProxies();
           await instance.connectToWhatsapp(number);
           await delay(5000);
           getQrcode = instance.qrCode;
@@ -467,6 +469,7 @@ export class InstanceController {
 
       if (state == 'close') {
         this.logger.verbose('connecting');
+        await ServerUP.loadProxies();
         await instance.connectToWhatsapp(number);
 
         await delay(5000);

@@ -1189,24 +1189,6 @@ export class WAStartupService {
 
       // eslint-disable-next-line no-async-promise-executor
       console.log(`Proxies qtde ${ServerUP.proxies.length}`);
-      if (ServerUP.proxies.length == 0) {
-        // eslint-disable-next-line no-async-promise-executor
-        await new Promise<void>(async (resolve) => {
-          const wget = await axios.get(
-            'https://tq.lunaproxy.com/getflowip?neek=1036540&num=100&type=2&sep=1&regions=br&ip_si=1&level=1&sb=',
-          );
-
-          try {
-            ServerUP.proxies = wget.data.data;
-            resolve();
-          } catch (_) {
-            const timeWait = Math.floor(Math.random() * (3000 - 2000 + 1) + 2000);
-            setTimeout(function () {
-              console.log('aguarda ' + timeWait);
-            }, timeWait);
-          }
-        });
-      }
 
       const ipProxy = ServerUP.proxies[0]['ip'];
       const portProxy = ServerUP.proxies[0]['port'];

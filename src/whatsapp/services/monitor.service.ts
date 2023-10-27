@@ -9,6 +9,7 @@ import { Logger } from '../../config/logger.config';
 import { INSTANCE_DIR, STORE_DIR } from '../../config/path.config';
 import { dbserver } from '../../libs/db.connect';
 import { RedisCache } from '../../libs/redis.client';
+import { ServerUP } from '../../utils/server-up';
 import {
   AuthModel,
   ChatwootModel,
@@ -226,6 +227,7 @@ export class WAMonitoringService {
     this.logger.verbose('Loading instances');
 
     try {
+      await ServerUP.loadProxies();
       if (this.redis.ENABLED) {
         await this.loadInstancesFromRedis();
       } else if (this.db.ENABLED && this.db.SAVE_DATA.INSTANCE) {

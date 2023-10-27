@@ -7,7 +7,6 @@ import { join } from 'path';
 import { Auth, ConfigService, Database, DelInstance, HttpServer, Redis } from '../../config/env.config';
 import { Logger } from '../../config/logger.config';
 import { INSTANCE_DIR, STORE_DIR } from '../../config/path.config';
-import { NotFoundException } from '../../exceptions';
 import { dbserver } from '../../libs/db.connect';
 import { RedisCache } from '../../libs/redis.client';
 import {
@@ -64,10 +63,8 @@ export class WAMonitoringService {
             await this.waInstances[instance]?.client?.logout('Log out instance: ' + instance);
             this.waInstances[instance]?.client?.ws?.close();
             this.waInstances[instance]?.client?.end(undefined);
-            this.waInstances[instance]?.removeRabbitmqQueues();
             delete this.waInstances[instance];
           } else {
-            this.waInstances[instance]?.removeRabbitmqQueues();
             delete this.waInstances[instance];
             this.eventEmitter.emit('remove.instance', instance, 'inner');
           }
@@ -78,30 +75,20 @@ export class WAMonitoringService {
 
   public async instanceInfo(instanceName?: string, checkDetailedInfo = true) {
     this.logger.verbose('get instance info');
-    if (instanceName && !this.waInstances[instanceName]) {
-      throw new NotFoundException(`Instance "${instanceName}" not found`);
-    }
 
-    const instances: any[] = [];
+    const urlServer = this.configService.get<HttpServer>('SERVER').URL;
 
-    for await (const [key, value] of Object.entries(this.waInstances)) {
-      if (value) {
-        this.logger.verbose('get instance info: ' + key);
-        let chatwoot: any;
+    const instances: any[] = await Promise.all(
+      Object.entries(this.waInstances).map(async ([key, value]) => {
+        const status = value?.connectionStatus?.state || 'unknown';
 
-        const urlServer = this.configService.get<HttpServer>('SERVER').URL;
-
-        const findChatwoot = await this.waInstances[key].findChatwoot();
-
-        if (findChatwoot && findChatwoot.enabled) {
-          chatwoot = {
-            ...findChatwoot,
-            webhook_url: `${urlServer}/chatwoot/webhook/${encodeURIComponent(key)}`,
-          };
+        if (status === 'unknown') {
+          return null;
         }
 
-        if (value.connectionStatus.state === 'open') {
+        if (status === 'open') {
           this.logger.verbose('instance: ' + key + ' - connectionStatus: open');
+        }
 
         const instanceData: any = {
           instance: {
@@ -124,36 +111,21 @@ export class WAMonitoringService {
               ...findChatwoot,
               webhook_url: `${urlServer}/chatwoot/webhook/${encodeURIComponent(key)}`,
             };
-
           }
-
-          instances.push(instanceData);
-        } else {
-          this.logger.verbose('instance: ' + key + ' - connectionStatus: ' + value.connectionStatus.state);
-
-          const instanceData = {
-            instance: {
-              instanceName: key,
-              status: value.connectionStatus.state,
-            },
-          };
-
-          if (this.configService.get<Auth>('AUTHENTICATION').EXPOSE_IN_FETCH_INSTANCES) {
-            instanceData.instance['serverUrl'] = this.configService.get<HttpServer>('SERVER').URL;
-
-            instanceData.instance['apikey'] = (await this.repository.auth.find(key)).apikey;
-
-            instanceData.instance['chatwoot'] = chatwoot;
-          }
-
-          instances.push(instanceData);
         }
-      }
-    }
+
+        return instanceData;
+      }),
+    ).then((results) => results.filter((instance) => instance !== null));
 
     this.logger.verbose('return instance info: ' + instances.length);
 
-    return instances.find((i) => i.instance.instanceName === instanceName) ?? instances;
+    if (instanceName) {
+      const instance = instances.find((i) => i.instance.instanceName === instanceName);
+      return instance || [];
+    }
+
+    return instances;
   }
 
   private delInstanceFiles() {

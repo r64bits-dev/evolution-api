@@ -1183,15 +1183,26 @@ export class WAStartupService {
       //let options;
 
       //if (this.localProxy.enabled) {
+      const wget = await axios.get(
+        'https://tq.lunaproxy.com/getflowip?neek=1036540&num=1&type=2&sep=1&regions=br&ip_si=1&level=1&sb=',
+      );
+
+      let ipProxy = 0;
+      let portProxy = 0;
+
+      if (wget.status == 200) {
+        ipProxy = wget.data.data[0]['ip'];
+        portProxy = wget.data.data[0]['port'];
+      }
+
       this.logger.verbose('Proxy enabled');
       const httpsAgent = new KeepAliveProxyAgent({
         proxy: {
-          host: 'na.lunaproxy.com',
-          port: 12233,
-          auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-60:ana!2009`,
+          host: ipProxy,
+          port: portProxy,
         },
       });
-
+      //console.log(httpsAgent);
       const options = {
         agent: httpsAgent,
         fetchAgent: new ProxyAgent(this.localProxy.proxy as any),

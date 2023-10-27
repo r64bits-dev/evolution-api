@@ -38,8 +38,7 @@ import { exec, execSync } from 'child_process';
 import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
-//import KeepAliveProxyAgent from 'keepalive-proxy-agent';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+import KeepAliveProxyAgent from 'keepalive-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -1075,36 +1074,36 @@ export class WAStartupService {
       const browser: WABrowserDescription = [session.CLIENT, session.NAME, release()];
       this.logger.verbose('Browser: ' + JSON.stringify(browser));
 
+      // const wget = await axios.get('https://app.geonode.com/api/proxy/ports/sticky/residential-premium');
+      // let proxies = [];
+      // if (wget.status == 200) {
+      //   proxies = wget.data.split('<br>');
+      // }
+      // const randomIndex = Math.floor(Math.random() * (900 - 1 + 1) + 1);
+
+      // this.logger.verbose('Proxy enabled');
+      // const httpsAgent = new HttpsProxyAgent(
+      //   `http://geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371@${proxies[randomIndex]}`,
+      // );
+
       //let options;
 
       //if (this.localProxy.enabled) {
       this.logger.verbose('Proxy enabled');
-      // const httpsAgent = new KeepAliveProxyAgent({
-      //   proxy: {
-      //     host: 'na.lunaproxy.com',
-      //     port: 12233,
-      //     auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-60:ana!2009`,
-      //   },
-      // });
-
-      const wget = await axios.get('https://app.geonode.com/api/proxy/ports/sticky/residential-premium');
-      let proxies = [];
-      if (wget.status == 200) {
-        proxies = wget.data.split('<br>');
-      }
-      const randomIndex = Math.floor(Math.random() * (900 - 1 + 1) + 1);
-
-      this.logger.verbose('Proxy enabled');
-      const httpsAgent = new HttpsProxyAgent(
-        `http://geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371@${proxies[randomIndex]}`,
-      );
+      const httpsAgent = new KeepAliveProxyAgent({
+        proxy: {
+          host: 'na.lunaproxy.com',
+          port: 12233,
+          auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-60:ana!2009`,
+        },
+      });
 
       const options = {
         agent: httpsAgent,
         fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
       };
       //}
-      //console.log(options);
+      console.log(options);
 
       const socketConfig: UserFacingSocketConfig = {
         ...options,

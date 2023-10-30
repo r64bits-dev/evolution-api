@@ -41,6 +41,7 @@ export class InstanceController {
     instanceName,
     webhook,
     webhook_by_events,
+    webhook_base64,
     events,
     qrcode,
     number,
@@ -69,6 +70,7 @@ export class InstanceController {
     typebot_unknown_message,
     proxy_enabled,
     proxy_proxy,
+    typebot_listening_from_me,
   }: InstanceDto) {
     try {
       this.logger.verbose('requested createInstance from ' + instanceName + ' instance');
@@ -136,6 +138,9 @@ export class InstanceController {
               'CONNECTION_UPDATE',
               'CALL',
               'NEW_JWT_TOKEN',
+              'TYPEBOT_START',
+              'TYPEBOT_CHANGE_STATUS',
+              'CHAMA_AI_ACTION',
             ];
           } else {
             newEvents = events;
@@ -145,6 +150,7 @@ export class InstanceController {
             url: webhook,
             events: newEvents,
             webhook_by_events,
+            webhook_base64,
           });
 
           webhookEvents = (await this.webhookService.find(instance)).events;
@@ -182,9 +188,12 @@ export class InstanceController {
               'CONNECTION_UPDATE',
               'CALL',
               'NEW_JWT_TOKEN',
+              'TYPEBOT_START',
+              'TYPEBOT_CHANGE_STATUS',
+              'CHAMA_AI_ACTION',
             ];
           } else {
-            newEvents = events;
+            newEvents = websocket_events;
           }
           this.websocketService.create(instance, {
             enabled: true,
@@ -226,9 +235,12 @@ export class InstanceController {
               'CONNECTION_UPDATE',
               'CALL',
               'NEW_JWT_TOKEN',
+              'TYPEBOT_START',
+              'TYPEBOT_CHANGE_STATUS',
+              'CHAMA_AI_ACTION',
             ];
           } else {
-            newEvents = events;
+            newEvents = rabbitmq_events;
           }
           this.rabbitmqService.create(instance, {
             enabled: true,
@@ -257,6 +269,7 @@ export class InstanceController {
             keyword_finish: typebot_keyword_finish,
             delay_message: typebot_delay_message,
             unknown_message: typebot_unknown_message,
+            listening_from_me: typebot_listening_from_me,
           });
         } catch (error) {
           this.logger.log(error);
@@ -296,6 +309,7 @@ export class InstanceController {
           webhook: {
             webhook,
             webhook_by_events,
+            webhook_base64,
             events: webhookEvents,
           },
           websocket: {
@@ -314,6 +328,7 @@ export class InstanceController {
             keyword_finish: typebot_keyword_finish,
             delay_message: typebot_delay_message,
             unknown_message: typebot_unknown_message,
+            listening_from_me: typebot_listening_from_me,
           },
           settings,
           qrcode: getQrcode,
@@ -388,6 +403,7 @@ export class InstanceController {
         webhook: {
           webhook,
           webhook_by_events,
+          webhook_base64,
           events: webhookEvents,
         },
         websocket: {
@@ -406,6 +422,7 @@ export class InstanceController {
           keyword_finish: typebot_keyword_finish,
           delay_message: typebot_delay_message,
           unknown_message: typebot_unknown_message,
+          listening_from_me: typebot_listening_from_me,
         },
         settings,
         chatwoot: {
@@ -472,10 +489,19 @@ export class InstanceController {
     try {
       this.logger.verbose('requested restartInstance from ' + instanceName + ' instance');
 
-      this.logger.verbose('logging out instance: ' + instanceName);
-      this.waMonitor.waInstances[instanceName]?.client?.ws?.close();
+      const instance = this.waMonitor.waInstances[instanceName];
+      const state = instance?.connectionStatus?.state;
 
-      return { status: 'SUCCESS', error: false, response: { message: 'Instance restarted' } };
+      switch (state) {
+        case 'open':
+          this.logger.verbose('logging out instance: ' + instanceName);
+          await instance.reloadConnection();
+          await delay(2000);
+
+          return await this.connectionState({ instanceName });
+        default:
+          return await this.connectionState({ instanceName });
+      }
     } catch (error) {
       this.logger.error(error);
     }
@@ -492,12 +518,13 @@ export class InstanceController {
   }
 
   public async fetchInstances({ instanceName }: InstanceDto) {
-    this.logger.verbose('requested fetchInstances from ' + instanceName + ' instance');
     if (instanceName) {
+      this.logger.verbose('requested fetchInstances from ' + instanceName + ' instance');
       this.logger.verbose('instanceName: ' + instanceName);
       return this.waMonitor.instanceInfo(instanceName);
     }
 
+    this.logger.verbose('requested fetchInstances (all instances)');
     return this.waMonitor.instanceInfo();
   }
 
@@ -530,6 +557,8 @@ export class InstanceController {
       throw new BadRequestException('The "' + instanceName + '" instance needs to be disconnected');
     }
     try {
+      this.waMonitor.waInstances[instanceName]?.removeRabbitmqQueues();
+
       if (instance.state === 'connecting') {
         this.logger.verbose('logging out instance: ' + instanceName);
 

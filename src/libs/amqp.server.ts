@@ -41,3 +41,60 @@ export const initAMQP = () => {
 export const getAMQP = (): amqp.Channel | null => {
   return amqpChannel;
 };
+
+export const initQueues = (instanceName: string, events: string[]) => {
+  if (!events || !events.length) return;
+
+  const queues = events.map((event) => {
+    return `${event.replace(/_/g, '.').toLowerCase()}`;
+  });
+
+  queues.forEach((event) => {
+    const amqp = getAMQP();
+    const exchangeName = instanceName ?? 'evolution_exchange';
+
+    amqp.assertExchange(exchangeName, 'topic', {
+      durable: true,
+      autoDelete: false,
+    });
+
+    const queueName = `${instanceName}.${event}`;
+
+    amqp.assertQueue(queueName, {
+      durable: true,
+      autoDelete: false,
+      arguments: {
+        'x-queue-type': 'quorum',
+      },
+    });
+
+    amqp.bindQueue(queueName, exchangeName, event);
+  });
+};
+
+export const removeQueues = (instanceName: string, events: string[]) => {
+  if (!events || !events.length) return;
+
+  const channel = getAMQP();
+
+  const queues = events.map((event) => {
+    return `${event.replace(/_/g, '.').toLowerCase()}`;
+  });
+
+  const exchangeName = instanceName ?? 'evolution_exchange';
+
+  queues.forEach((event) => {
+    const amqp = getAMQP();
+
+    amqp.assertExchange(exchangeName, 'topic', {
+      durable: true,
+      autoDelete: false,
+    });
+
+    const queueName = `${instanceName}.${event}`;
+
+    amqp.deleteQueue(queueName);
+  });
+
+  channel.deleteExchange(exchangeName);
+};

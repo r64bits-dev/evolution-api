@@ -82,9 +82,14 @@ export class AuthService {
   }
 
   public async checkDuplicateToken(token: string) {
-    const instances = await this.waMonitor.instanceInfo();
-
-    this.logger.verbose('checking duplicate token');
+    let instances = null;
+    try {
+      instances = await this.waMonitor.instanceInfo(null, false);
+      this.logger.verbose('checking duplicate token');
+    } catch (err) {
+      this.logger.verbose('available token');
+      return true;
+    }
 
     const instance = instances.find((instance) => instance.instance.apikey === token);
 

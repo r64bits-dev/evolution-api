@@ -23,6 +23,9 @@ export enum Events {
   GROUPS_UPDATE = 'groups.update',
   GROUP_PARTICIPANTS_UPDATE = 'group-participants.update',
   CALL = 'call',
+  TYPEBOT_START = 'typebot.start',
+  TYPEBOT_CHANGE_STATUS = 'typebot.change-status',
+  CHAMA_AI_ACTION = 'chama-ai.action',
 }
 
 export declare namespace wa {
@@ -47,6 +50,7 @@ export declare namespace wa {
     url?: string;
     events?: string[];
     webhook_by_events?: boolean;
+    webhook_base64?: boolean;
   };
 
   export type LocalChatwoot = {
@@ -94,12 +98,21 @@ export declare namespace wa {
     keyword_finish?: string;
     delay_message?: number;
     unknown_message?: string;
+    listening_from_me?: boolean;
     sessions?: Session[];
   };
 
   export type LocalProxy = {
     enabled?: boolean;
     proxy?: string;
+  };
+
+  export type LocalChamaai = {
+    enabled?: boolean;
+    url?: string;
+    token?: string;
+    waNumber?: string;
+    answerByAudio?: boolean;
   };
 
   export type StateConnection = {

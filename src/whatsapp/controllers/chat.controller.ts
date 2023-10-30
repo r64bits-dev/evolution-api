@@ -1,6 +1,7 @@
 import { Logger } from '../../config/logger.config';
 import {
   ArchiveChatDto,
+  BlockDto,
   DeleteMessage,
   getBase64FromMediaMessageDto,
   NumberDto,
@@ -25,6 +26,11 @@ export class ChatController {
   public async whatsappNumber({ instanceName }: InstanceDto, data: WhatsAppNumberDto) {
     logger.verbose('requested whatsappNumber from ' + instanceName + ' instance');
     return await this.waMonitor.waInstances[instanceName].whatsappNumber(data);
+  }
+
+  public async whatsappBlockUnblock({ instanceName }: InstanceDto, data: BlockDto) {
+    logger.verbose('requested whatsappNumber from ' + instanceName + ' instance');
+    return await this.waMonitor.waInstances[instanceName].blockUnblock(data);
   }
 
   public async readMessage({ instanceName }: InstanceDto, data: ReadMessageDto) {

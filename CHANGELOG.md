@@ -1,3 +1,54 @@
+# 1.5.4 (2023-10-09 20:43)
+
+### Fixed
+
+* Baileys logger typing issue resolved
+* Solved problem with duplicate messages in chatwoot
+
+# 1.5.3 (2023-10-06 18:55)
+
+### Feature
+
+* Swagger documentation
+* Added base 64 sending option via webhook
+
+### Fixed
+
+* Remove rabbitmq queues when delete instances
+* Improvement in restart instance to completely redo the connection
+* Update node version: v20
+* Correction of messages sent by the api and typebot not appearing in chatwoot
+* Adjustment to start typebot, added startSession parameter
+* Chatwoot now receives messages sent via api and typebot
+* Fixed problem with starting with an input in typebot
+* Added check to ensure variables are not empty before executing foreach in start typebot
+
+# 1.5.2 (2023-09-28 17:56)
+
+### Fixed
+
+* Fix chatwootSchema in chatwoot model to store reopen_conversation and conversation_pending options
+* Problem resolved when sending files from minio to typebot
+* Improvement in the "startTypebot" method to create persistent session when triggered
+* New manager for Evo 1.5.2 - Set Typebot update
+* Resolved problems when reading/querying instances
+
+# 1.5.1 (2023-09-17 13:50)
+
+### Feature
+
+* Added listening_from_me option in Set Typebot
+* Added variables options in Start Typebot
+* Added webhooks for typebot events
+* Added ChamaAI integration
+* Added webhook to send errors
+* Added support for messaging with ads on chatwoot
+
+### Fixed
+
+* Fix looping connection messages in chatwoot
+* Improved performance of fetch instances
+
 # 1.5.0 (2023-08-18 12:47)
 
 ### Feature

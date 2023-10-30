@@ -4,6 +4,7 @@ import { Logger } from '../../config/logger.config';
 import { InstanceDto } from '../dto/instance.dto';
 import { Session, TypebotDto } from '../dto/typebot.dto';
 import { MessageRaw } from '../models';
+import { Events } from '../types/wa.types';
 import { WAMonitoringService } from './monitor.service';
 
 export class TypebotService {
@@ -53,6 +54,7 @@ export class TypebotService {
           keyword_finish: findData.keyword_finish,
           delay_message: findData.delay_message,
           unknown_message: findData.unknown_message,
+          listening_from_me: findData.listening_from_me,
           sessions: findData.sessions,
         };
 
@@ -76,10 +78,19 @@ export class TypebotService {
       keyword_finish: findData.keyword_finish,
       delay_message: findData.delay_message,
       unknown_message: findData.unknown_message,
+      listening_from_me: findData.listening_from_me,
       sessions: findData.sessions,
     };
 
     this.create(instance, typebotData);
+
+    this.waMonitor.waInstances[instance.instanceName].sendDataWebhook(Events.TYPEBOT_CHANGE_STATUS, {
+      remoteJid: remoteJid,
+      status: status,
+      url: findData.url,
+      typebot: findData.typebot,
+      session,
+    });
 
     return { typebot: { ...instance, typebot: typebotData } };
   }
@@ -88,31 +99,82 @@ export class TypebotService {
     const remoteJid = data.remoteJid;
     const url = data.url;
     const typebot = data.typebot;
+    const startSession = data.startSession;
+    const variables = data.variables;
+    const findTypebot = await this.find(instance);
+    const sessions = (findTypebot.sessions as Session[]) ?? [];
+    const expire = findTypebot.expire;
+    const keyword_finish = findTypebot.keyword_finish;
+    const delay_message = findTypebot.delay_message;
+    const unknown_message = findTypebot.unknown_message;
+    const listening_from_me = findTypebot.listening_from_me;
 
-    const id = Math.floor(Math.random() * 10000000000).toString();
-
-    const reqData = {
-      sessionId: id,
-      startParams: {
-        typebot: data.typebot,
-        prefilledVariables: {
-          remoteJid: data.remoteJid,
-          pushName: data.pushName,
-          instanceName: instance.instanceName,
-        },
-      },
+    const prefilledVariables = {
+      remoteJid: remoteJid,
+      instanceName: instance.instanceName,
     };
-    console.log(reqData);
 
-    const request = await axios.post(data.url + '/api/v1/sendMessage', reqData);
+    if (variables?.length) {
+      variables.forEach((variable: { name: string | number; value: string }) => {
+        prefilledVariables[variable.name] = variable.value;
+      });
+    }
 
-    await this.sendWAMessage(
-      instance,
-      remoteJid,
-      request.data.messages,
-      request.data.input,
-      request.data.clientSideActions,
-    );
+    if (startSession) {
+      const response = await this.createNewSession(instance, {
+        url: url,
+        typebot: typebot,
+        remoteJid: remoteJid,
+        expire: expire,
+        keyword_finish: keyword_finish,
+        delay_message: delay_message,
+        unknown_message: unknown_message,
+        listening_from_me: listening_from_me,
+        sessions: sessions,
+        prefilledVariables: prefilledVariables,
+      });
+
+      if (response.sessionId) {
+        await this.sendWAMessage(instance, remoteJid, response.messages, response.input, response.clientSideActions);
+
+        this.waMonitor.waInstances[instance.instanceName].sendDataWebhook(Events.TYPEBOT_START, {
+          remoteJid: remoteJid,
+          url: url,
+          typebot: typebot,
+          prefilledVariables: prefilledVariables,
+          sessionId: `${response.sessionId}`,
+        });
+      } else {
+        throw new Error('Session ID not found in response');
+      }
+    } else {
+      const id = Math.floor(Math.random() * 10000000000).toString();
+
+      const reqData = {
+        startParams: {
+          typebot: data.typebot,
+          prefilledVariables: prefilledVariables,
+        },
+      };
+
+      const request = await axios.post(data.url + '/api/v1/sendMessage', reqData);
+
+      await this.sendWAMessage(
+        instance,
+        remoteJid,
+        request.data.messages,
+        request.data.input,
+        request.data.clientSideActions,
+      );
+
+      this.waMonitor.waInstances[instance.instanceName].sendDataWebhook(Events.TYPEBOT_START, {
+        remoteJid: remoteJid,
+        url: url,
+        typebot: typebot,
+        variables: variables,
+        sessionId: id,
+      });
+    }
 
     return {
       typebot: {
@@ -121,6 +183,7 @@ export class TypebotService {
           url: url,
           remoteJid: remoteJid,
           typebot: typebot,
+          prefilledVariables: prefilledVariables,
         },
       },
     };
@@ -165,12 +228,12 @@ export class TypebotService {
   public async createNewSession(instance: InstanceDto, data: any) {
     const id = Math.floor(Math.random() * 10000000000).toString();
     const reqData = {
-      sessionId: id,
       startParams: {
         typebot: data.typebot,
         prefilledVariables: {
+          ...data.prefilledVariables,
           remoteJid: data.remoteJid,
-          pushName: data.pushName,
+          pushName: data.pushName || '',
           instanceName: instance.instanceName,
         },
       },
@@ -185,6 +248,12 @@ export class TypebotService {
         status: 'opened',
         createdAt: Date.now(),
         updateAt: Date.now(),
+        prefilledVariables: {
+          ...data.prefilledVariables,
+          remoteJid: data.remoteJid,
+          pushName: data.pushName || '',
+          instanceName: instance.instanceName,
+        },
       });
 
       const typebotData = {
@@ -195,6 +264,7 @@ export class TypebotService {
         keyword_finish: data.keyword_finish,
         delay_message: data.delay_message,
         unknown_message: data.unknown_message,
+        listening_from_me: data.listening_from_me,
         sessions: data.sessions,
       };
 
@@ -354,13 +424,15 @@ export class TypebotService {
   }
 
   public async sendTypebot(instance: InstanceDto, remoteJid: string, msg: MessageRaw) {
-    const url = (await this.find(instance)).url;
-    const typebot = (await this.find(instance)).typebot;
-    const sessions = ((await this.find(instance)).sessions as Session[]) ?? [];
-    const expire = (await this.find(instance)).expire;
-    const keyword_finish = (await this.find(instance)).keyword_finish;
-    const delay_message = (await this.find(instance)).delay_message;
-    const unknown_message = (await this.find(instance)).unknown_message;
+    const findTypebot = await this.find(instance);
+    const url = findTypebot.url;
+    const typebot = findTypebot.typebot;
+    const sessions = (findTypebot.sessions as Session[]) ?? [];
+    const expire = findTypebot.expire;
+    const keyword_finish = findTypebot.keyword_finish;
+    const delay_message = findTypebot.delay_message;
+    const unknown_message = findTypebot.unknown_message;
+    const listening_from_me = findTypebot.listening_from_me;
 
     const session = sessions.find((session) => session.remoteJid === remoteJid);
 
@@ -381,12 +453,69 @@ export class TypebotService {
           keyword_finish: keyword_finish,
           delay_message: delay_message,
           unknown_message: unknown_message,
+          listening_from_me: listening_from_me,
           sessions: sessions,
           remoteJid: remoteJid,
           pushName: msg.pushName,
         });
 
         await this.sendWAMessage(instance, remoteJid, data.messages, data.input, data.clientSideActions);
+
+        if (data.messages.length === 0) {
+          const content = this.getConversationMessage(msg.message);
+
+          if (!content) {
+            if (unknown_message) {
+              this.waMonitor.waInstances[instance.instanceName].textMessage({
+                number: remoteJid.split('@')[0],
+                options: {
+                  delay: delay_message || 1000,
+                  presence: 'composing',
+                },
+                textMessage: {
+                  text: unknown_message,
+                },
+              });
+            }
+            return;
+          }
+
+          if (keyword_finish && content.toLowerCase() === keyword_finish.toLowerCase()) {
+            sessions.splice(sessions.indexOf(session), 1);
+
+            const typebotData = {
+              enabled: true,
+              url: url,
+              typebot: typebot,
+              expire: expire,
+              keyword_finish: keyword_finish,
+              delay_message: delay_message,
+              unknown_message: unknown_message,
+              listening_from_me: listening_from_me,
+              sessions,
+            };
+
+            this.create(instance, typebotData);
+
+            return;
+          }
+
+          const reqData = {
+            message: content,
+            sessionId: data.sessionId,
+          };
+
+          const request = await axios.post(url + '/api/v1/sendMessage', reqData);
+
+          console.log('request', request);
+          await this.sendWAMessage(
+            instance,
+            remoteJid,
+            request.data.messages,
+            request.data.input,
+            request.data.clientSideActions,
+          );
+        }
 
         return;
       }
@@ -404,6 +533,7 @@ export class TypebotService {
         keyword_finish: keyword_finish,
         delay_message: delay_message,
         unknown_message: unknown_message,
+        listening_from_me: listening_from_me,
         sessions: sessions,
         remoteJid: remoteJid,
         pushName: msg.pushName,
@@ -411,6 +541,61 @@ export class TypebotService {
 
       await this.sendWAMessage(instance, remoteJid, data.messages, data.input, data.clientSideActions);
 
+      if (data.messages.length === 0) {
+        const content = this.getConversationMessage(msg.message);
+
+        if (!content) {
+          if (unknown_message) {
+            this.waMonitor.waInstances[instance.instanceName].textMessage({
+              number: remoteJid.split('@')[0],
+              options: {
+                delay: delay_message || 1000,
+                presence: 'composing',
+              },
+              textMessage: {
+                text: unknown_message,
+              },
+            });
+          }
+          return;
+        }
+
+        if (keyword_finish && content.toLowerCase() === keyword_finish.toLowerCase()) {
+          sessions.splice(sessions.indexOf(session), 1);
+
+          const typebotData = {
+            enabled: true,
+            url: url,
+            typebot: typebot,
+            expire: expire,
+            keyword_finish: keyword_finish,
+            delay_message: delay_message,
+            unknown_message: unknown_message,
+            listening_from_me: listening_from_me,
+            sessions,
+          };
+
+          this.create(instance, typebotData);
+
+          return;
+        }
+
+        const reqData = {
+          message: content,
+          sessionId: data.sessionId,
+        };
+
+        const request = await axios.post(url + '/api/v1/sendMessage', reqData);
+
+        console.log('request', request);
+        await this.sendWAMessage(
+          instance,
+          remoteJid,
+          request.data.messages,
+          request.data.input,
+          request.data.clientSideActions,
+        );
+      }
       return;
     }
 
@@ -428,6 +613,7 @@ export class TypebotService {
       keyword_finish: keyword_finish,
       delay_message: delay_message,
       unknown_message: unknown_message,
+      listening_from_me: listening_from_me,
       sessions,
     };
 
@@ -451,7 +637,7 @@ export class TypebotService {
       return;
     }
 
-    if (content.toLowerCase() === keyword_finish.toLowerCase()) {
+    if (keyword_finish && content.toLowerCase() === keyword_finish.toLowerCase()) {
       sessions.splice(sessions.indexOf(session), 1);
 
       const typebotData = {
@@ -462,6 +648,7 @@ export class TypebotService {
         keyword_finish: keyword_finish,
         delay_message: delay_message,
         unknown_message: unknown_message,
+        listening_from_me: listening_from_me,
         sessions,
       };
 

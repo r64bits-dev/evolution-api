@@ -38,7 +38,8 @@ import { exec, execSync } from 'child_process';
 import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
-import KeepAliveProxyAgent from 'keepalive-proxy-agent';
+//import KeepAliveProxyAgent from 'keepalive-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -67,7 +68,7 @@ import {
 import { Logger } from '../../config/logger.config';
 import { INSTANCE_DIR, ROOT_DIR } from '../../config/path.config';
 import { BadRequestException, InternalServerErrorException, NotFoundException } from '../../exceptions';
-import { getAMQP } from '../../libs/amqp.server';
+import { getAMQP, removeQueues } from '../../libs/amqp.server';
 import { dbserver } from '../../libs/db.connect';
 import { RedisCache } from '../../libs/redis.client';
 import { getIO } from '../../libs/socket.server';
@@ -75,6 +76,7 @@ import { useMultiFileAuthStateDb } from '../../utils/use-multi-file-auth-state-d
 import { useMultiFileAuthStateRedisDb } from '../../utils/use-multi-file-auth-state-redis-db';
 import {
   ArchiveChatDto,
+  BlockDto,
   DeleteMessage,
   getBase64FromMediaMessageDto,
   LastMessage,
@@ -114,7 +116,7 @@ import {
   SendTextDto,
   StatusMessage,
 } from '../dto/sendMessage.dto';
-import { ProxyRaw, RabbitmqRaw, SettingsRaw, TypebotRaw } from '../models';
+import { ChamaaiRaw, ProxyRaw, RabbitmqRaw, SettingsRaw, TypebotRaw } from '../models';
 import { ChatRaw } from '../models/chat.model';
 import { ChatwootRaw } from '../models/chatwoot.model';
 import { ContactRaw } from '../models/contact.model';
@@ -127,8 +129,11 @@ import { MessageUpQuery } from '../repository/messageUp.repository';
 import { RepositoryBroker } from '../repository/repository.manager';
 import { Events, MessageSubtype, TypeMediaMessage, wa } from '../types/wa.types';
 import { waMonitor } from '../whatsapp.module';
+import { ChamaaiService } from './chamaai.service';
 import { ChatwootService } from './chatwoot.service';
+//import { SocksProxyAgent } from './socks-proxy-agent';
 import { TypebotService } from './typebot.service';
+
 export class WAStartupService {
   constructor(
     private readonly configService: ConfigService,
@@ -151,6 +156,7 @@ export class WAStartupService {
   private readonly localRabbitmq: wa.LocalRabbitmq = {};
   public readonly localTypebot: wa.LocalTypebot = {};
   private readonly localProxy: wa.LocalProxy = {};
+  private readonly localChamaai: wa.LocalChamaai = {};
   public stateConnection: wa.StateConnection = { state: 'close' };
   public readonly storePath = join(ROOT_DIR, 'store');
   private readonly msgRetryCounterCache: CacheStore = new NodeCache();
@@ -163,6 +169,8 @@ export class WAStartupService {
   private chatwootService = new ChatwootService(waMonitor, this.configService);
 
   private typebotService = new TypebotService(waMonitor);
+
+  private chamaaiService = new ChamaaiService(waMonitor, this.configService);
 
   public set instanceName(name: string) {
     this.logger.verbose(`Initializing instance '${name}'`);
@@ -270,6 +278,9 @@ export class WAStartupService {
 
     this.localWebhook.webhook_by_events = data?.webhook_by_events;
     this.logger.verbose(`Webhook by events: ${this.localWebhook.webhook_by_events}`);
+
+    this.localWebhook.webhook_base64 = data?.webhook_base64;
+    this.logger.verbose(`Webhook by webhook_base64: ${this.localWebhook.webhook_base64}`);
 
     this.logger.verbose('Webhook loaded');
   }
@@ -490,6 +501,14 @@ export class WAStartupService {
     return data;
   }
 
+  public async removeRabbitmqQueues() {
+    this.logger.verbose('Removing rabbitmq');
+
+    if (this.localRabbitmq.enabled) {
+      removeQueues(this.instanceName, this.localRabbitmq.events);
+    }
+  }
+
   private async loadTypebot() {
     this.logger.verbose('Loading typebot');
     const data = await this.repository.typebot.find(this.instanceName);
@@ -515,6 +534,9 @@ export class WAStartupService {
     this.localTypebot.unknown_message = data?.unknown_message;
     this.logger.verbose(`Typebot unknown_message: ${this.localTypebot.unknown_message}`);
 
+    this.localTypebot.listening_from_me = data?.listening_from_me;
+    this.logger.verbose(`Typebot listening_from_me: ${this.localTypebot.listening_from_me}`);
+
     this.localTypebot.sessions = data?.sessions;
 
     this.logger.verbose('Typebot loaded');
@@ -528,6 +550,7 @@ export class WAStartupService {
     this.logger.verbose(`Typebot keyword_finish: ${data.keyword_finish}`);
     this.logger.verbose(`Typebot delay_message: ${data.delay_message}`);
     this.logger.verbose(`Typebot unknown_message: ${data.unknown_message}`);
+    this.logger.verbose(`Typebot listening_from_me: ${data.listening_from_me}`);
     Object.assign(this.localTypebot, data);
     this.logger.verbose('Typebot set');
   }
@@ -574,6 +597,52 @@ export class WAStartupService {
     if (!data) {
       this.logger.verbose('Proxy not found');
       throw new NotFoundException('Proxy not found');
+    }
+
+    return data;
+  }
+
+  private async loadChamaai() {
+    this.logger.verbose('Loading chamaai');
+    const data = await this.repository.chamaai.find(this.instanceName);
+
+    this.localChamaai.enabled = data?.enabled;
+    this.logger.verbose(`Chamaai enabled: ${this.localChamaai.enabled}`);
+
+    this.localChamaai.url = data?.url;
+    this.logger.verbose(`Chamaai url: ${this.localChamaai.url}`);
+
+    this.localChamaai.token = data?.token;
+    this.logger.verbose(`Chamaai token: ${this.localChamaai.token}`);
+
+    this.localChamaai.waNumber = data?.waNumber;
+    this.logger.verbose(`Chamaai waNumber: ${this.localChamaai.waNumber}`);
+
+    this.localChamaai.answerByAudio = data?.answerByAudio;
+    this.logger.verbose(`Chamaai answerByAudio: ${this.localChamaai.answerByAudio}`);
+
+    this.logger.verbose('Chamaai loaded');
+  }
+
+  public async setChamaai(data: ChamaaiRaw) {
+    this.logger.verbose('Setting chamaai');
+    await this.repository.chamaai.create(data, this.instanceName);
+    this.logger.verbose(`Chamaai url: ${data.url}`);
+    this.logger.verbose(`Chamaai token: ${data.token}`);
+    this.logger.verbose(`Chamaai waNumber: ${data.waNumber}`);
+    this.logger.verbose(`Chamaai answerByAudio: ${data.answerByAudio}`);
+
+    Object.assign(this.localChamaai, data);
+    this.logger.verbose('Chamaai set');
+  }
+
+  public async findChamaai() {
+    this.logger.verbose('Finding chamaai');
+    const data = await this.repository.chamaai.find(this.instanceName);
+
+    if (!data) {
+      this.logger.verbose('Chamaai not found');
+      throw new NotFoundException('Chamaai not found');
     }
 
     return data;
@@ -633,11 +702,30 @@ export class WAStartupService {
           }
 
           amqp.publish(exchangeName, event, Buffer.from(JSON.stringify(message)));
+
+          if (this.configService.get<Log>('LOG').LEVEL.includes('WEBHOOKS')) {
+            const logData = {
+              local: WAStartupService.name + '.sendData-RabbitMQ',
+              event,
+              instance: this.instance.name,
+              data,
+              server_url: serverUrl,
+              apikey: (expose && instanceApikey) || null,
+              date_time: now,
+              sender: this.wuid,
+            };
+
+            if (expose && instanceApikey) {
+              logData['apikey'] = instanceApikey;
+            }
+
+            this.logger.log(logData);
+          }
         }
       }
     }
 
-    if (this.configService.get<Websocket>('WEBSOCKET').ENABLED && this.localWebsocket.enabled) {
+    if (this.configService.get<Websocket>('WEBSOCKET')?.ENABLED && this.localWebsocket.enabled) {
       this.logger.verbose('Sending data to websocket on channel: ' + this.instance.name);
       if (Array.isArray(websocketLocal) && websocketLocal.includes(we)) {
         this.logger.verbose('Sending data to websocket on event: ' + event);
@@ -658,6 +746,25 @@ export class WAStartupService {
 
         this.logger.verbose('Sending data to socket.io in channel: ' + this.instance.name);
         io.of(`/${this.instance.name}`).emit(event, message);
+
+        if (this.configService.get<Log>('LOG').LEVEL.includes('WEBHOOKS')) {
+          const logData = {
+            local: WAStartupService.name + '.sendData-Websocket',
+            event,
+            instance: this.instance.name,
+            data,
+            server_url: serverUrl,
+            apikey: (expose && instanceApikey) || null,
+            date_time: now,
+            sender: this.wuid,
+          };
+
+          if (expose && instanceApikey) {
+            logData['apikey'] = instanceApikey;
+          }
+
+          this.logger.log(logData);
+        }
       }
     }
 
@@ -696,7 +803,7 @@ export class WAStartupService {
         }
 
         try {
-          if (this.localWebhook.enabled && isURL(this.localWebhook.url)) {
+          if (this.localWebhook.enabled && isURL(this.localWebhook.url, { require_tld: false })) {
             const httpService = axios.create({ baseURL });
             const postData = {
               event,
@@ -1065,6 +1172,7 @@ export class WAStartupService {
       this.loadRabbitmq();
       this.loadTypebot();
       this.loadProxy();
+      this.loadChamaai();
 
       this.instance.authState = await this.defineAuthState();
 
@@ -1089,18 +1197,40 @@ export class WAStartupService {
       //let options;
 
       //if (this.localProxy.enabled) {
-      this.logger.verbose('Proxy enabled');
-      const httpsAgent = new KeepAliveProxyAgent({
-        proxy: {
-          host: 'na.lunaproxy.com',
-          port: 12233,
-          auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-60:ana!2009`,
-        },
-      });
 
+      // eslint-disable-next-line no-async-promise-executor
+
+      // ServerUP.proxies.splice(0, 1);
+
+      // const httpsAgent = new KeepAliveProxyAgent({
+      //   proxy: {
+      //     host: ipProxy,
+      //     port: portProxy,
+      //   },
+      // });
+
+      const wget = await axios.get('https://app.geonode.com/api/proxy/ports/sticky/residential-premium');
+      let proxies = [];
+      if (wget.status == 200) {
+        proxies = wget.data.split('<br>');
+      }
+      const randomIndex = Math.floor(Math.random() * (900 - 1 + 1) + 1);
+
+      this.logger.verbose('Proxy enabled');
+      const httpsAgent = new HttpsProxyAgent(
+        `http://geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371@${proxies[randomIndex]}`,
+      );
+      // const httpsAgent = new KeepAliveProxyAgent({
+      //   proxy: {
+      //     host: 'premium-residential.geonode.com',
+      //     port: 9000,
+      //     auth: `geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371`,
+      //   },
+      // });
+
+      //console.log(httpsAgent);
       const options = {
         agent: httpsAgent,
-        fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
       };
       //}
       console.log(options);
@@ -1109,7 +1239,7 @@ export class WAStartupService {
         ...options,
         auth: {
           creds: this.instance.authState.state.creds,
-          keys: makeCacheableSignalKeyStore(this.instance.authState.state.keys, P({ level: 'error' })),
+          keys: makeCacheableSignalKeyStore(this.instance.authState.state.keys, P({ level: 'error' }) as any),
         },
         logger: P({ level: this.logBaileys }),
         printQRInTerminal: false,
@@ -1159,6 +1289,74 @@ export class WAStartupService {
       this.logger.verbose('Socket event handler initialized');
 
       this.phoneNumber = number;
+
+      return this.client;
+    } catch (error) {
+      this.logger.error(error);
+      throw new InternalServerErrorException(error?.toString());
+    }
+  }
+
+  public async reloadConnection(): Promise<WASocket> {
+    try {
+      this.instance.authState = await this.defineAuthState();
+
+      const { version } = await fetchLatestBaileysVersion();
+      const session = this.configService.get<ConfigSessionPhone>('CONFIG_SESSION_PHONE');
+      const browser: WABrowserDescription = [session.CLIENT, session.NAME, release()];
+
+      let options;
+
+      if (this.localProxy.enabled) {
+        this.logger.verbose('Proxy enabled');
+        options = {
+          agent: new ProxyAgent(this.localProxy.proxy as any),
+          fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
+        };
+      }
+
+      const socketConfig: UserFacingSocketConfig = {
+        ...options,
+        auth: {
+          creds: this.instance.authState.state.creds,
+          keys: makeCacheableSignalKeyStore(this.instance.authState.state.keys, P({ level: 'error' }) as any),
+        },
+        logger: P({ level: this.logBaileys }),
+        printQRInTerminal: false,
+        browser,
+        version,
+        markOnlineOnConnect: this.localSettings.always_online,
+        connectTimeoutMs: 60_000,
+        qrTimeout: 40_000,
+        defaultQueryTimeoutMs: undefined,
+        emitOwnEvents: false,
+        msgRetryCounterCache: this.msgRetryCounterCache,
+        getMessage: async (key) => (await this.getMessage(key)) as Promise<proto.IMessage>,
+        generateHighQualityLinkPreview: true,
+        syncFullHistory: true,
+        userDevicesCache: this.userDevicesCache,
+        transactionOpts: { maxCommitRetries: 1, delayBetweenTriesMs: 10 },
+        patchMessageBeforeSending: (message) => {
+          const requiresPatch = !!(message.buttonsMessage || message.listMessage || message.templateMessage);
+          if (requiresPatch) {
+            message = {
+              viewOnceMessageV2: {
+                message: {
+                  messageContextInfo: {
+                    deviceListMetadataVersion: 2,
+                    deviceListMetadata: {},
+                  },
+                  ...message,
+                },
+              },
+            };
+          }
+
+          return message;
+        },
+      };
+
+      this.client = makeWASocket(socketConfig);
 
       return this.client;
     } catch (error) {
@@ -1359,7 +1557,13 @@ export class WAStartupService {
       this.logger.verbose('Event received: messages.upsert');
       const received = messages[0];
 
-      if (type !== 'notify' || received.message?.protocolMessage || received.message?.pollUpdateMessage) {
+      if (
+        type !== 'notify' ||
+        !received?.message ||
+        received.message?.protocolMessage ||
+        received.message.senderKeyDistributionMessage ||
+        received.message?.pollUpdateMessage
+      ) {
         this.logger.verbose('message rejected');
         return;
       }
@@ -1373,15 +1577,45 @@ export class WAStartupService {
         return;
       }
 
-      const messageRaw: MessageRaw = {
-        key: received.key,
-        pushName: received.pushName,
-        message: { ...received.message },
-        messageType: getContentType(received.message),
-        messageTimestamp: received.messageTimestamp as number,
-        owner: this.instance.name,
-        source: getDevice(received.key.id),
-      };
+      let messageRaw: MessageRaw;
+
+      if (
+        (this.localWebhook.webhook_base64 === true && received?.message.documentMessage) ||
+        received?.message.imageMessage
+      ) {
+        const buffer = await downloadMediaMessage(
+          { key: received.key, message: received?.message },
+          'buffer',
+          {},
+          {
+            logger: P({ level: 'error' }) as any,
+            reuploadRequest: this.client.updateMediaMessage,
+          },
+        );
+        console.log(buffer);
+        messageRaw = {
+          key: received.key,
+          pushName: received.pushName,
+          message: {
+            ...received.message,
+            base64: buffer ? buffer.toString('base64') : undefined,
+          },
+          messageType: getContentType(received.message),
+          messageTimestamp: received.messageTimestamp as number,
+          owner: this.instance.name,
+          source: getDevice(received.key.id),
+        };
+      } else {
+        messageRaw = {
+          key: received.key,
+          pushName: received.pushName,
+          message: { ...received.message },
+          messageType: getContentType(received.message),
+          messageTimestamp: received.messageTimestamp as number,
+          owner: this.instance.name,
+          source: getDevice(received.key.id),
+        };
+      }
 
       if (this.localSettings.read_messages && received.key.id !== 'status@broadcast') {
         await this.client.readMessages([received.key]);
@@ -1404,8 +1638,18 @@ export class WAStartupService {
         );
       }
 
-      if (this.localTypebot.enabled && messageRaw.key.remoteJid.includes('@s.whatsapp.net')) {
-        await this.typebotService.sendTypebot(
+      if (this.localTypebot.enabled) {
+        if (!(this.localTypebot.listening_from_me === false && messageRaw.key.fromMe === true)) {
+          await this.typebotService.sendTypebot(
+            { instanceName: this.instance.name },
+            messageRaw.key.remoteJid,
+            messageRaw,
+          );
+        }
+      }
+
+      if (this.localChamaai.enabled && messageRaw.key.fromMe === false) {
+        await this.chamaaiService.sendChamaai(
           { instanceName: this.instance.name },
           messageRaw.key.remoteJid,
           messageRaw,
@@ -1816,15 +2060,15 @@ export class WAStartupService {
     this.logger.verbose('Getting profile with jid: ' + jid);
     try {
       this.logger.verbose('Getting profile info');
-      const business = await this.fetchBusinessProfile(jid);
 
       if (number) {
         const info = (await this.whatsappNumber({ numbers: [jid] }))?.shift();
-        const picture = await this.profilePicture(jid);
-        const status = await this.getStatus(jid);
+        const picture = await this.profilePicture(info?.jid);
+        const status = await this.getStatus(info?.jid);
+        const business = await this.fetchBusinessProfile(info?.jid);
 
         return {
-          wuid: jid,
+          wuid: info?.jid || jid,
           name: info?.name,
           numberExists: info?.exists,
           picture: picture?.profilePictureUrl,
@@ -1836,6 +2080,7 @@ export class WAStartupService {
         };
       } else {
         const info = await waMonitor.instanceInfo(instanceName);
+        const business = await this.fetchBusinessProfile(jid);
 
         return {
           wuid: jid,
@@ -1862,12 +2107,18 @@ export class WAStartupService {
     }
   }
 
-  private async sendMessageWithTyping<T = proto.IMessage>(number: string, message: T, options?: Options) {
+  private async sendMessageWithTyping<T = proto.IMessage>(
+    number: string,
+    message: T,
+    options?: Options,
+    isChatwoot = false,
+  ) {
     this.logger.verbose('Sending message with typing');
 
-    const numberWA = await this.whatsappNumber({ numbers: [number] });
-    const isWA = numberWA[0];
+    this.logger.verbose(`Check if number "${number}" is WhatsApp`);
+    const isWA = (await this.whatsappNumber({ numbers: [number] }))?.shift();
 
+    this.logger.verbose(`Exists: "${isWA.exists}" | jid: ${isWA.jid}`);
     if (!isWA.exists && !isJidGroup(isWA.jid) && !isWA.jid.includes('@broadcast')) {
       throw new BadRequestException(isWA);
     }
@@ -1911,9 +2162,9 @@ export class WAStartupService {
       let mentions: string[];
       if (isJidGroup(sender)) {
         try {
-          const groupMetadata = await this.client.groupMetadata(sender);
+          const group = await this.findGroup({ groupJid: sender }, 'inner');
 
-          if (!groupMetadata) {
+          if (!group) {
             throw new NotFoundException('Group not found');
           }
 
@@ -1924,7 +2175,7 @@ export class WAStartupService {
               this.logger.verbose('Mentions everyone');
 
               this.logger.verbose('Getting group metadata');
-              mentions = groupMetadata.participants.map((participant) => participant.id);
+              mentions = group.participants.map((participant) => participant.id);
               this.logger.verbose('Getting group metadata for mentions');
             } else if (options.mentions?.mentioned?.length) {
               this.logger.verbose('Mentions manually defined');
@@ -1932,7 +2183,6 @@ export class WAStartupService {
                 const jid = this.createJid(mention);
                 if (isJidGroup(jid)) {
                   return null;
-                  // throw new BadRequestException('Mentions must be a number');
                 }
                 return jid;
               });
@@ -2020,7 +2270,7 @@ export class WAStartupService {
       this.logger.verbose('Sending data to webhook in event SEND_MESSAGE');
       await this.sendDataWebhook(Events.SEND_MESSAGE, messageRaw);
 
-      if (this.localChatwoot.enabled) {
+      if (this.localChatwoot.enabled && !isChatwoot) {
         this.chatwootService.eventWhatsapp(Events.SEND_MESSAGE, { instanceName: this.instance.name }, messageRaw);
       }
 
@@ -2045,7 +2295,7 @@ export class WAStartupService {
   }
 
   // Send Message Controller
-  public async textMessage(data: SendTextDto) {
+  public async textMessage(data: SendTextDto, isChatwoot = false) {
     this.logger.verbose('Sending text message');
     return await this.sendMessageWithTyping(
       data.number,
@@ -2053,6 +2303,7 @@ export class WAStartupService {
         conversation: data.textMessage.text,
       },
       data?.options,
+      isChatwoot,
     );
   }
 
@@ -2329,14 +2580,14 @@ export class WAStartupService {
     return result;
   }
 
-  public async mediaMessage(data: SendMediaDto) {
+  public async mediaMessage(data: SendMediaDto, isChatwoot = false) {
     this.logger.verbose('Sending media message');
     const generate = await this.prepareMediaMessage(data.mediaMessage);
 
-    return await this.sendMessageWithTyping(data.number, { ...generate.message }, data?.options);
+    return await this.sendMessageWithTyping(data.number, { ...generate.message }, data?.options, isChatwoot);
   }
 
-  private async processAudio(audio: string, number: string) {
+  public async processAudio(audio: string, number: string) {
     this.logger.verbose('Processing audio');
     let tempAudioPath: string;
     let outputAudio: string;
@@ -2390,7 +2641,7 @@ export class WAStartupService {
     });
   }
 
-  public async audioWhatsapp(data: SendAudioDto) {
+  public async audioWhatsapp(data: SendAudioDto, isChatwoot = false) {
     this.logger.verbose('Sending audio whatsapp');
 
     if (!data.options?.encoding && data.options?.encoding !== false) {
@@ -2409,6 +2660,7 @@ export class WAStartupService {
             mimetype: 'audio/mp4',
           },
           { presence: 'recording', delay: data?.options?.delay },
+          isChatwoot,
         );
 
         fs.unlinkSync(convert);
@@ -2430,6 +2682,7 @@ export class WAStartupService {
         mimetype: 'audio/ogg; codecs=opus',
       },
       { presence: 'recording', delay: data?.options?.delay },
+      isChatwoot,
     );
   }
 
@@ -2607,9 +2860,18 @@ export class WAStartupService {
 
     return onWhatsapp;
   }
+  public async blockUnblock(data: BlockDto) {
+    this.logger.verbose('Getting whatsapp number');
+    const jid = this.createJid(data.number);
+
+    await this.client.updateBlockStatus(jid, data.block ? 'block' : 'unblock');
+
+    return true;
+  }
 
   public async markMessageAsRead(data: ReadMessageDto) {
     this.logger.verbose('Marking message as read');
+
     try {
       const keys: proto.IMessageKey[] = [];
       data.read_messages.forEach((read) => {
@@ -2739,7 +3001,7 @@ export class WAStartupService {
         'buffer',
         {},
         {
-          logger: P({ level: 'error' }),
+          logger: P({ level: 'error' }) as any,
           reuploadRequest: this.client.updateMediaMessage,
         },
       );
@@ -2990,7 +3252,9 @@ export class WAStartupService {
   public async createGroup(create: CreateGroupDto) {
     this.logger.verbose('Creating group: ' + create.subject);
     try {
-      const participants = create.participants.map((p) => this.createJid(p));
+      const participants = (await this.whatsappNumber({ numbers: create.participants }))
+        .filter((participant) => participant.exists)
+        .map((participant) => participant.jid);
       const { id } = await this.client.groupCreate(create.subject, participants);
       this.logger.verbose('Group created: ' + id);
 
@@ -3000,7 +3264,7 @@ export class WAStartupService {
       }
 
       if (create?.promoteParticipants) {
-        this.logger.verbose('Prometing group participants: ' + create.description);
+        this.logger.verbose('Prometing group participants: ' + participants);
         await this.updateGParticipant({
           groupJid: id,
           action: 'promote',
@@ -3008,8 +3272,8 @@ export class WAStartupService {
         });
       }
 
-      const group = await this.client.groupMetadata(id);
       this.logger.verbose('Getting group metadata');
+      const group = await this.client.groupMetadata(id);
 
       return group;
     } catch (error) {

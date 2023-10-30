@@ -5,6 +5,7 @@ export class InstanceDto {
   token?: string;
   webhook?: string;
   webhook_by_events?: boolean;
+  webhook_base64?: boolean;
   events?: string[];
   reject_call?: boolean;
   msg_call?: string;
@@ -28,6 +29,7 @@ export class InstanceDto {
   typebot_keyword_finish?: string;
   typebot_delay_message?: number;
   typebot_unknown_message?: string;
+  typebot_listening_from_me?: boolean;
   proxy_enabled?: boolean;
   proxy_proxy?: string;
 }

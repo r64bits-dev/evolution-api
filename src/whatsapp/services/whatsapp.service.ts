@@ -374,7 +374,7 @@ export class WAStartupService {
     this.localSettings.msg_call = data?.msg_call;
     this.logger.verbose(`Settings msg_call: ${this.localSettings.msg_call}`);
 
-    this.localSettings.groups_ignore = data?.groups_ignore;
+    this.localSettings.groups_ignore = data?.groups_ignore || true;
     this.logger.verbose(`Settings groups_ignore: ${this.localSettings.groups_ignore}`);
 
     this.localSettings.always_online = data?.always_online;

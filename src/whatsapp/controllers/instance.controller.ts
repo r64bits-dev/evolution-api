@@ -270,7 +270,7 @@ export class InstanceController {
         groups_ignore: groups_ignore || true,
         always_online: always_online || false,
         read_messages: read_messages || false,
-        read_status: read_status || true,
+        read_status: read_status || false,
       };
 
       this.logger.verbose('settings: ' + JSON.stringify(settings));

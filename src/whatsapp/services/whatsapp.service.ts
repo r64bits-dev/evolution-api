@@ -1182,17 +1182,17 @@ export class WAStartupService {
       const browser: WABrowserDescription = [session.CLIENT, session.NAME, release()];
       this.logger.verbose('Browser: ' + JSON.stringify(browser));
 
-      const wget = await axios.get('https://app.geonode.com/api/proxy/ports/sticky/residential-premium');
-      let proxies = [];
-      if (wget.status == 200) {
-        proxies = wget.data.split('<br>');
-      }
-      const randomIndex = Math.floor(Math.random() * (900 - 1 + 1) + 1);
+      // const wget = await axios.get('https://app.geonode.com/api/proxy/ports/sticky/residential-premium');
+      // let proxies = [];
+      // if (wget.status == 200) {
+      //   proxies = wget.data.split('<br>');
+      // }
+      // const randomIndex = Math.floor(Math.random() * (900 - 1 + 1) + 1);
 
-      this.logger.verbose('Proxy enabled');
-      const httpsAgent = new HttpsProxyAgent(
-        `http://geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371@${proxies[randomIndex]}`,
-      );
+      // this.logger.verbose('Proxy enabled');
+      // const httpsAgent = new HttpsProxyAgent(
+      //   `http://geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371@${proxies[randomIndex]}`,
+      // );
 
       //let options;
 
@@ -1209,9 +1209,9 @@ export class WAStartupService {
       //   },
       // });
 
-      // const httpsAgent = new HttpsProxyAgent(
-      //   `http://user-lu9956846-region-br-sessid-${this.instanceName}:ana!2009@na.lunaproxy.com:12233`,
-      // );
+      const httpsAgent = new HttpsProxyAgent(
+        `http://user-lu9956846-region-br-sessid-${this.instanceName}:ana!2009@na.lunaproxy.com:12233`,
+      );
       // const httpsAgent = new KeepAliveProxyAgent({
       //   proxy: {
       //     host: 'premium-residential.geonode.com',

@@ -68,7 +68,7 @@ export class InstanceController {
     typebot_keyword_finish,
     typebot_delay_message,
     typebot_unknown_message,
-    proxy_enabled,
+    //proxy_enabled,
     proxy_proxy,
     typebot_listening_from_me,
   }: InstanceDto) {
@@ -82,13 +82,13 @@ export class InstanceController {
       const instance = new WAStartupService(this.configService, this.eventEmitter, this.repository, this.cache);
       instance.instanceName = instanceName;
 
-      if (proxy_enabled) {
-        this.logger.verbose('requested createInstance with proxy ' + proxy_proxy);
-        instance.setProxy({
-          enabled: proxy_enabled,
-          proxy: proxy_proxy,
-        });
-      }
+      //if (proxy_enabled) {
+      this.logger.verbose('requested createInstance with proxy ' + proxy_proxy);
+      instance.setProxy({
+        enabled: true,
+        proxy: 'http://user-lu9956846-region-br:ana!2009@na.ix7dhsjb.lunaproxy.net:12233',
+      });
+      //}
 
       this.logger.verbose('instance: ' + instance.instanceName + ' created');
 

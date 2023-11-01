@@ -39,7 +39,7 @@ import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
 //import KeepAliveProxyAgent from 'keepalive-proxy-agent';
-import { HttpsProxyAgent } from 'https-proxy-agent';
+// import { HttpsProxyAgent } from 'https-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -1182,17 +1182,17 @@ export class WAStartupService {
       const browser: WABrowserDescription = [session.CLIENT, session.NAME, release()];
       this.logger.verbose('Browser: ' + JSON.stringify(browser));
 
-      const wget = await axios.get('https://app.geonode.com/api/proxy/ports/sticky/residential-premium');
-      let proxies = [];
-      if (wget.status == 200) {
-        proxies = wget.data.split('<br>');
-      }
-      const randomIndex = Math.floor(Math.random() * (900 - 1 + 1) + 1);
+      // const wget = await axios.get('https://app.geonode.com/api/proxy/ports/sticky/residential-premium');
+      // let proxies = [];
+      // if (wget.status == 200) {
+      //   proxies = wget.data.split('<br>');
+      // }
+      // const randomIndex = Math.floor(Math.random() * (900 - 1 + 1) + 1);
 
-      this.logger.verbose('Proxy enabled');
-      const httpsAgent = new HttpsProxyAgent(
-        `http://geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371@${proxies[randomIndex]}`,
-      );
+      // this.logger.verbose('Proxy enabled');
+      // const httpsAgent = new HttpsProxyAgent(
+      //   `http://geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371@${proxies[randomIndex]}`,
+      // );
 
       //let options;
 
@@ -1221,11 +1221,21 @@ export class WAStartupService {
       // });
 
       //console.log(httpsAgent);
-      const options = {
-        agent: httpsAgent,
-      };
+      // const options = {
+      //   agent: httpsAgent,
+      // };
       //}
-      console.log(options);
+      //console.log(options);
+
+      let options;
+
+      if (this.localProxy.enabled) {
+        this.logger.verbose('Proxy enabled');
+        options = {
+          agent: new ProxyAgent(this.localProxy.proxy as any),
+          fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
+        };
+      }
 
       const socketConfig: UserFacingSocketConfig = {
         ...options,

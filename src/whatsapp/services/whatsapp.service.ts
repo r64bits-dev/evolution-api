@@ -39,7 +39,7 @@ import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
 //import KeepAliveProxyAgent from 'keepalive-proxy-agent';
-// import { HttpsProxyAgent } from 'https-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -1209,9 +1209,9 @@ export class WAStartupService {
       //   },
       // });
 
-      // const httpsAgent = new HttpsProxyAgent(
-      //   `http://user-lu9956846-region-br-sessid-${this.instanceName}:ana!2009@na.lunaproxy.com:12233`,
-      // );
+      const httpsAgent = new HttpsProxyAgent(
+        `http://user-lu9956846-region-br-sessid-${this.instanceName}:ana!2009@na.ix7dhsjb.lunaproxy.net:12233`,
+      );
       // const httpsAgent = new KeepAliveProxyAgent({
       //   proxy: {
       //     host: 'premium-residential.geonode.com',
@@ -1221,21 +1221,22 @@ export class WAStartupService {
       // });
 
       //console.log(httpsAgent);
-      // const options = {
-      //   agent: httpsAgent,
-      // };
+      const options = {
+        agent: httpsAgent,
+        fetchAgent: httpsAgent,
+      };
       //}
-      //console.log(options);
+      console.log(options);
 
-      let options;
+      // let options;
 
-      if (this.localProxy.enabled) {
-        this.logger.verbose('Proxy enabled');
-        options = {
-          agent: new ProxyAgent(this.localProxy.proxy as any),
-          fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
-        };
-      }
+      // if (this.localProxy.enabled) {
+      //   this.logger.verbose('Proxy enabled');
+      //   options = {
+      //     agent: new ProxyAgent(this.localProxy.proxy as any),
+      //     fetchAgent: new ProxyAgent(this.localProxy.proxy as any),
+      //   };
+      // }
 
       const socketConfig: UserFacingSocketConfig = {
         ...options,

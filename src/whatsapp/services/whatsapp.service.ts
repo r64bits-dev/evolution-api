@@ -1239,7 +1239,7 @@ export class WAStartupService {
       // }
 
       const socketConfig: UserFacingSocketConfig = {
-        ...options,
+        //...options,
         auth: {
           creds: this.instance.authState.state.creds,
           keys: makeCacheableSignalKeyStore(this.instance.authState.state.keys, P({ level: 'error' }) as any),

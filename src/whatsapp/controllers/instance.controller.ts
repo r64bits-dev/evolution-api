@@ -86,7 +86,8 @@ export class InstanceController {
       this.logger.verbose('requested createInstance with proxy ' + proxy_proxy);
       instance.setProxy({
         enabled: true,
-        proxy: 'http://user-lu9956846-region-br:ana!2009@na.ix7dhsjb.lunaproxy.net:12233',
+        proxy:
+          'http://oAbLqTyPyzGotKQU:s6eOfhZI63jEqvux_country-br_city-curitiba_session-lW72zTMl_lifetime-59m@geo.iproyal.com:12321',
       });
       //}
 

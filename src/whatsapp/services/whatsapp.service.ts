@@ -1210,7 +1210,7 @@ export class WAStartupService {
       // });
 
       const httpsAgent = new HttpsProxyAgent(
-        `http://user-lu9956846-region-br-sessid-${this.instanceName}:ana!2009@na.ix7dhsjb.lunaproxy.net:12233`,
+        `http://oAbLqTyPyzGotKQU:s6eOfhZI63jEqvux_country-br_city-curitiba_session-${this.instanceName}_lifetime-59m@geo.iproyal.com:12321`,
       );
       // const httpsAgent = new KeepAliveProxyAgent({
       //   proxy: {
@@ -1239,7 +1239,7 @@ export class WAStartupService {
       // }
 
       const socketConfig: UserFacingSocketConfig = {
-        //...options,
+        ...options,
         auth: {
           creds: this.instance.authState.state.creds,
           keys: makeCacheableSignalKeyStore(this.instance.authState.state.keys, P({ level: 'error' }) as any),

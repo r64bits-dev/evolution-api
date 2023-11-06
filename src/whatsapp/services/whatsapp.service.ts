@@ -1210,7 +1210,7 @@ export class WAStartupService {
       // });
 
       const httpsAgent = new HttpsProxyAgent(
-        `http://oAbLqTyPyzGotKQU:s6eOfhZI63jEqvux_country-br_city-curitiba_session-${this.instanceName}_lifetime-59m@geo.iproyal.com:12321`,
+        `http://oAbLqTyPyzGotKQU:s6eOfhZI63jEqvux_country-br_session-${this.instanceName}_lifetime-59m@geo.iproyal.com:12321`,
       );
       // const httpsAgent = new KeepAliveProxyAgent({
       //   proxy: {

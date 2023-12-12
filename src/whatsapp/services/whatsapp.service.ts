@@ -38,9 +38,8 @@ import { exec, execSync } from 'child_process';
 import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
-import { HttpsProxyAgent } from 'https-proxy-agent';
 //import { HttpsProxyAgent } from 'https-proxy-agent';
-//import KeepAliveProxyAgent from 'keepalive-proxy-agent';
+import KeepAliveProxyAgent from 'keepalive-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -1210,17 +1209,17 @@ export class WAStartupService {
       //   },
       // });
 
-      // const httpsAgent = new KeepAliveProxyAgent({
-      //   proxy: {
-      //     host: 'na.lunaproxy.com',
-      //     port: 12233,
-      //     auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-10:ana!2009`,
-      //   },
-      // });
+      const httpsAgent = new KeepAliveProxyAgent({
+        proxy: {
+          host: 'na.lunaproxy.com',
+          port: 12233,
+          auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-10:ana!2009`,
+        },
+      });
 
-      const httpsAgent = new HttpsProxyAgent(
-        `http://oAbLqTyPyzGotKQU:s6eOfhZI63jEqvux_country-br@geo.iproyal.com:12321`,
-      );
+      // const httpsAgent = new HttpsProxyAgent(
+      //   `http://oAbLqTyPyzGotKQU:s6eOfhZI63jEqvux_country-br@geo.iproyal.com:12321`,
+      // );
       // const httpsAgent = new KeepAliveProxyAgent({
       //   proxy: {
       //     host: 'premium-residential.geonode.com',

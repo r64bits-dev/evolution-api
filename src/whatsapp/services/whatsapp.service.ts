@@ -39,7 +39,7 @@ import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
 //import { HttpsProxyAgent } from 'https-proxy-agent';
-// import KeepAliveProxyAgent from 'keepalive-proxy-agent';
+import KeepAliveProxyAgent from 'keepalive-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -1209,13 +1209,13 @@ export class WAStartupService {
       //   },
       // });
 
-      // const httpsAgent = new KeepAliveProxyAgent({
-      //   proxy: {
-      //     host: 'na.lunaproxy.com',
-      //     port: 12233,
-      //     auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-10:ana!2009`,
-      //   },
-      // });
+      const httpsAgent = new KeepAliveProxyAgent({
+        proxy: {
+          host: 'na.lunaproxy.com',
+          port: 12233,
+          auth: `user-lu9956846-region-br-sessid-${this.instanceName}-sesstime-10:ana!2009`,
+        },
+      });
 
       // const httpsAgent = new HttpsProxyAgent(
       //   `http://oAbLqTyPyzGotKQU:s6eOfhZI63jEqvux_country-br@geo.iproyal.com:12321`,
@@ -1229,11 +1229,10 @@ export class WAStartupService {
       // });
 
       //console.log(httpsAgent);
-      // const options = {
-      //   agent: httpsAgent,
-      //   fetchAgent: httpsAgent,
-      // };
-      //}
+      const options = {
+        agent: httpsAgent,
+        fetchAgent: httpsAgent,
+      };
       //console.log(options);
 
       // let options;
@@ -1247,7 +1246,7 @@ export class WAStartupService {
       // }
 
       const socketConfig: UserFacingSocketConfig = {
-        //...options,
+        ...options,
         auth: {
           creds: this.instance.authState.state.creds,
           keys: makeCacheableSignalKeyStore(this.instance.authState.state.keys, P({ level: 'error' }) as any),

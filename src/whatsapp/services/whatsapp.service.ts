@@ -1229,11 +1229,11 @@ export class WAStartupService {
       //   },
       // });
 
-      //console.log(httpsAgent);
-      const options = {
-        agent: httpsAgent,
-        fetchAgent: httpsAgent,
-      };
+      console.log(httpsAgent);
+      // const options = {
+      //   agent: httpsAgent,
+      //   fetchAgent: httpsAgent,
+      // };
       //console.log(options);
 
       // let options;
@@ -1247,7 +1247,7 @@ export class WAStartupService {
       // }
 
       const socketConfig: UserFacingSocketConfig = {
-        ...options,
+        //...options,
         auth: {
           creds: this.instance.authState.state.creds,
           keys: makeCacheableSignalKeyStore(this.instance.authState.state.keys, P({ level: 'error' }) as any),

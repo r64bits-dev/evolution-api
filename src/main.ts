@@ -16,7 +16,6 @@ import { initIO } from './libs/socket.server';
 import { ServerUP } from './utils/server-up';
 import { HttpStatus, router } from './whatsapp/routers/index.router';
 import { waMonitor } from './whatsapp/whatsapp.module';
-
 function initWA() {
   waMonitor.loadInstance();
 }
@@ -120,7 +119,43 @@ function bootstrap() {
   ServerUP.app = app;
   const server = ServerUP[httpServer.TYPE];
 
-  server.listen(httpServer.PORT, () => logger.log(httpServer.TYPE.toUpperCase() + ' - ON: ' + httpServer.PORT));
+  function delayExecution(callback: () => void, delayInSeconds: number) {
+    setTimeout(callback, delayInSeconds * 1000);
+  }
+
+  function startWhatsapp() {
+    //process.env.SERVICE_NAME = '41992063984';
+    //process.env.AUTHENTICATION_API_KEY = 'B6D711FCDE4D4FD5936544120E713976';
+    if (process.env.SERVICE_NAME) {
+      console.log('INICIANDO V2: ', process.env.SERVICE_NAME);
+
+      const requestData = {
+        instanceName: process.env.SERVICE_NAME,
+        token: process.env.SERVICE_NAME,
+        qrcode: true,
+      };
+
+      const config = {
+        headers: {
+          apikey: process.env.AUTHENTICATION_API_KEY,
+        },
+        timeout: 60000,
+      };
+      axios
+        .post('http://localhost:8080/instance/create', requestData, config)
+        .then(() => {
+          console.log('Chamada bem-sucedida');
+        })
+        .catch((error) => {
+          console.error('Erro na chamada:', error);
+        });
+    }
+  }
+
+  server.listen(httpServer.PORT, async () => {
+    logger.log(httpServer.TYPE.toUpperCase() + ' - ON: ' + httpServer.PORT);
+    delayExecution(startWhatsapp, 3);
+  });
 
   initWA();
 

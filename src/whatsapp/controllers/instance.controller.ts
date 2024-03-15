@@ -69,7 +69,7 @@ export class InstanceController {
     typebot_delay_message,
     typebot_unknown_message,
     //proxy_enabled,
-    proxy_proxy,
+    //proxy_proxy,
     typebot_listening_from_me,
   }: InstanceDto) {
     try {
@@ -83,12 +83,12 @@ export class InstanceController {
       instance.instanceName = instanceName;
 
       //if (proxy_enabled) {
-      this.logger.verbose('requested createInstance with proxy ' + proxy_proxy);
-      instance.setProxy({
-        enabled: true,
-        proxy:
-          'http://oAbLqTyPyzGotKQU:s6eOfhZI63jEqvux_country-br_city-curitiba_session-lW72zTMl_lifetime-59m@geo.iproyal.com:12321',
-      });
+      // this.logger.verbose('requested createInstance with proxy ' + proxy_proxy);
+      // instance.setProxy({
+      //   enabled: true,
+      //   proxy:
+      //     'http://oAbLqTyPyzGotKQU:s6eOfhZI63jEqvux_country-br_city-curitiba_session-lW72zTMl_lifetime-59m@geo.iproyal.com:12321',
+      // });
       //}
 
       this.logger.verbose('instance: ' + instance.instanceName + ' created');

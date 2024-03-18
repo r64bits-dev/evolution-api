@@ -57,6 +57,7 @@ ENV RABBITMQ_URI=amqp://guest:guest@rabbitmq:5672
 ENV WEBSOCKET_ENABLED=false
 
 ENV WEBHOOK_GLOBAL_URL=http://omni.kankei.com.br:82/webhook
+#ENV WEBHOOK_GLOBAL_URL=http://hom.kankei.com.br:82/webhook
 ENV WEBHOOK_GLOBAL_ENABLED=true
 
 ENV WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=false

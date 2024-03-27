@@ -872,9 +872,15 @@ export class WAStartupService {
 
           this.logger.log(logData);
         }
+        let sendConnectionUpdate = true;
+        if (we == 'CONNECTION_UPDATE') {
+          if (data['state'] != 'open' || data['state'] != 'connected') {
+            sendConnectionUpdate = false;
+          }
+        }
 
         try {
-          if (globalWebhook && globalWebhook?.ENABLED && isURL(globalURL)) {
+          if (globalWebhook && globalWebhook?.ENABLED && isURL(globalURL) && sendConnectionUpdate) {
             const httpService = axios.create({ baseURL: globalURL });
             const postData = {
               event,

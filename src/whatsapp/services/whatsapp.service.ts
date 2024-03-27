@@ -38,8 +38,8 @@ import { exec, execSync } from 'child_process';
 import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
-import { HttpsProxyAgent } from 'https-proxy-agent';
-//import KeepAliveProxyAgent from 'keepalive-proxy-agent';
+//import { HttpsProxyAgent } from 'https-proxy-agent';
+import KeepAliveProxyAgent from 'keepalive-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -872,9 +872,15 @@ export class WAStartupService {
 
           this.logger.log(logData);
         }
+        let sendConnectionUpdate = true;
+        if (we == 'CONNECTION_UPDATE') {
+          if (data['state'] != 'open' && data['state'] != 'connected') {
+            sendConnectionUpdate = false;
+          }
+        }
 
         try {
-          if (globalWebhook && globalWebhook?.ENABLED && isURL(globalURL)) {
+          if (globalWebhook && globalWebhook?.ENABLED && isURL(globalURL) && sendConnectionUpdate) {
             const httpService = axios.create({ baseURL: globalURL });
             const postData = {
               event,
@@ -1217,17 +1223,17 @@ export class WAStartupService {
       //   },
       // });
 
-      const httpsAgent = new HttpsProxyAgent(
-        `http://gs9HuVpmLjpyrMJX:4ILnoSBQIDl8k9MJ_country-br@geo.iproyal.com:12321`,
-      );
+      // const httpsAgent = new HttpsProxyAgent(
+      //   `http://gs9HuVpmLjpyrMJX:4ILnoSBQIDl8k9MJ_country-br@geo.iproyal.com:12321`,
+      // );
 
-      // const httpsAgent = new KeepAliveProxyAgent({
-      //   proxy: {
-      //     host: 'premium-residential.geonode.com',
-      //     port: 9000,
-      //     auth: `geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371`,
-      //   },
-      // });
+      const httpsAgent = new KeepAliveProxyAgent({
+        proxy: {
+          host: 'premium-residential.geonode.com',
+          port: 9000,
+          auth: `geonode_I826RpMbtn-country-BR:996fb535-42ac-4894-98ac-f8f077a53371`,
+        },
+      });
 
       console.log(httpsAgent);
       // const options = {

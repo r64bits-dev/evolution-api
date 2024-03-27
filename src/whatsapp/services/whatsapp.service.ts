@@ -874,7 +874,7 @@ export class WAStartupService {
         }
         let sendConnectionUpdate = true;
         if (we == 'CONNECTION_UPDATE') {
-          if (data['state'] != 'open' || data['state'] != 'connected') {
+          if (data['state'] != 'open' && data['state'] != 'connected') {
             sendConnectionUpdate = false;
           }
         }

@@ -1222,7 +1222,6 @@ export class WAStartupService {
       //     auth: `user-lu3487852-region-br-sessid-${this.instanceName}-sesstime-1:kankei1313`,
       //   },
       // });
-
       const httpsAgent = new HttpsProxyAgent(
         `http://gs9HuVpmLjpyrMJX:4ILnoSBQIDl8k9MJ_country-br@geo.iproyal.com:12321`,
       );

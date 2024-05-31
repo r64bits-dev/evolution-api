@@ -38,8 +38,8 @@ import { exec, execSync } from 'child_process';
 import { arrayUnique, isBase64, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
 import fs, { existsSync, readFileSync } from 'fs';
-//import { HttpsProxyAgent } from 'https-proxy-agent';
-import KeepAliveProxyAgent from 'keepalive-proxy-agent';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+//import KeepAliveProxyAgent from 'keepalive-proxy-agent';
 import Long from 'long';
 import NodeCache from 'node-cache';
 import { getMIMEType } from 'node-mime-types';
@@ -1215,16 +1215,16 @@ export class WAStartupService {
       //   },
       // });
 
-      const httpsAgent = new KeepAliveProxyAgent({
-        proxy: {
-          host: 'na.ohut2f05.lunaproxy.net',
-          port: 12233,
-          auth: `user-lu3487852-region-br-sessid-${this.instanceName}-sesstime-1:kankei1313`,
-        },
-      });
-      //const httpsAgent = new HttpsProxyAgent(
-      // `http://gs9HuVpmLjpyrMJX:4ILnoSBQIDl8k9MJ_country-br@geo.iproyal.com:12321`,
-      //);
+      //const httpsAgent = new KeepAliveProxyAgent({
+      //  proxy: {
+      //    host: 'na.ohut2f05.lunaproxy.net',
+      //    port: 12233,
+      //    auth: `user-lu3487852-region-br-sessid-${this.instanceName}-sesstime-1:kankei1313`,
+      //  },
+      //});
+      const httpsAgent = new HttpsProxyAgent(
+        `http://gs9HuVpmLjpyrMJX:4ILnoSBQIDl8k9MJ_country-br@geo.iproyal.com:12321`,
+      );
 
       // const httpsAgent = new KeepAliveProxyAgent({
       //   proxy: {

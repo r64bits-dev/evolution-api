@@ -1214,7 +1214,6 @@ export class WAStartupService {
       //     port: portProxy,
       //   },
       // });
-
       const httpsAgent = new KeepAliveProxyAgent({
         proxy: {
           host: 'na.ohut2f05.lunaproxy.net',

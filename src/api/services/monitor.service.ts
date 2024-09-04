@@ -426,7 +426,6 @@ export class WAMonitoringService {
   private async loadInstancesFromProvider() {
     this.logger.verbose('Provider in files enabled');
     const [instances] = await this.providerFiles.allInstances();
-
     if (!instances?.data) {
       this.logger.verbose('No instances found');
       return;

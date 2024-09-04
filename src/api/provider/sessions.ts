@@ -29,9 +29,10 @@ export class ProviderFiles {
       const url = `http://${this.config.HOST}:${this.config.PORT}`;
       try {
         const response = await axios.options(url + '/ping');
-        if (response?.data != 'pong') {
-          throw new Error('Offline file provider.');
-        }
+        console.log('response -- ' + response.data);
+        // if (response?.data != 'pong') {
+        //   throw new Error('Offline file provider.');
+        // }
 
         await axios.post(`${url}/session`, { group: this.config.PREFIX }, { headers: { apikey: this.globalApiToken } });
       } catch (error) {

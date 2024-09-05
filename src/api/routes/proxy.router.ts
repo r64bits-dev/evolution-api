@@ -14,10 +14,11 @@ export class ProxyRouter extends RouterBroker {
   constructor(...guards: RequestHandler[]) {
     super();
     this.router
-      .post(this.routerPath('set'), ...guards, async (req, res) => {
+      .post(this.routerPath('set'), async (req, res) => {
         logger.verbose('request received in setProxy');
         logger.verbose('request body: ');
-        logger.verbose(req.body);
+        logger.verbose(guards);
+        logger.verbose(req);
 
         logger.verbose('request query: ');
         logger.verbose(req.query);

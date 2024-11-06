@@ -741,7 +741,6 @@ export class ChatwootService {
       findByName = inbox.payload.find((inbox) => inbox.name === this.getClientCwConfig().name_inbox.split('-cwId-')[0]);
     }
 
-
     if (!findByName) {
       this.logger.warn('inbox not found');
       return null;
@@ -1538,8 +1537,8 @@ export class ChatwootService {
     if (msg?.content_attributes?.in_reply_to) {
       const message = await this.repository.message.find({
         where: {
-          chatwoot: {
-            messageId: msg?.content_attributes?.in_reply_to,
+          key: {
+            id: msg?.content_attributes?.in_reply_to_external_id?.split(':')[1],
           },
           owner: instance.instanceName,
         },

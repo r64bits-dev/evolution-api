@@ -33,6 +33,7 @@ export class ChatwootService {
   private readonly logger = new Logger(ChatwootService.name);
 
   private provider: any;
+  private messageCache = new Set();
 
   constructor(
     private readonly waMonitor: WAMonitoringService,
@@ -1837,6 +1838,19 @@ export class ChatwootService {
 
       if (event === 'messages.upsert' || event === 'send.message') {
         this.logger.verbose('event messages.upsert');
+        const messageId = body.key.id; // ID único da mensagem
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const main = this;
+        if (main.messageCache.has(messageId)) {
+          main.logger.verbose(`Mensagem duplicada descartada: ${messageId}`);
+          return; // Descarta a mensagem duplicada
+        }
+
+        this.messageCache.add(messageId);
+
+        setTimeout(() => {
+          main.messageCache.delete(messageId);
+        }, 2000);
 
         if (body.key.remoteJid === 'status@broadcast') {
           this.logger.verbose('status broadcast found');
